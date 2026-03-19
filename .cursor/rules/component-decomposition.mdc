@@ -1,0 +1,13 @@
+---
+description: Decompose UI into focused components
+alwaysApply: true
+---
+
+# Component Decomposition Rule
+
+- Keep page components focused on composition and routing concerns.
+- Extract reusable UI blocks into separate files under `src/components/...`.
+- Move pure data aggregation/formatting logic into utility modules instead of embedding it in JSX-heavy files.
+- Prefer one component per file when a block has its own props, internal logic, or can be reused.
+- For dashboard-like pages, split cards/panels into separate components by responsibility.
+

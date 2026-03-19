@@ -55,6 +55,7 @@ export function SettingsPage() {
 
         <TextField
           label="MongoDB connection string"
+          type="password"
           value={draftMongoUrl}
           onChange={(e) => setDraftMongoUrl(e.currentTarget.value)}
           placeholder="mongodb://localhost:27017"

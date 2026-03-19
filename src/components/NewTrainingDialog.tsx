@@ -22,6 +22,11 @@ import exercisesCatalog from "../data/exercises.json";
 import { useAppContext } from "../state/AppContext";
 import { TrainingSetItem } from "./TrainingSetItem";
 
+type ExerciseCatalogItem = {
+  label: string;
+  muscleGroup: string[];
+};
+
 type ExerciseSet = {
   reps: number;
   weight: number;
@@ -48,7 +53,9 @@ export function NewTrainingDialog({
   const [dateStr, setDateStr] = useState(today);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [exerciseInputValue, setExerciseInputValue] = useState("");
-  const [selectedExerciseOption, setSelectedExerciseOption] = useState<string | null>(null);
+  const [selectedExerciseOption, setSelectedExerciseOption] = useState<
+    ExerciseCatalogItem | string | null
+  >(null);
   const [exercises, setExercises] = useState<ExerciseDraft[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{
@@ -69,10 +76,16 @@ export function NewTrainingDialog({
   }, [open, today]);
 
   const canSave = exercises.some((exercise) => exercise.sets.length > 0);
+  const exerciseOptions = exercisesCatalog as ExerciseCatalogItem[];
 
   function resolveExerciseName() {
-    const candidate = (selectedExerciseOption ?? exerciseInputValue).trim();
-    return candidate;
+    if (typeof selectedExerciseOption === "string") {
+      return selectedExerciseOption.trim();
+    }
+    if (selectedExerciseOption && typeof selectedExerciseOption === "object") {
+      return selectedExerciseOption.label.trim();
+    }
+    return exerciseInputValue.trim();
   }
 
   function addExercise() {
@@ -136,11 +149,24 @@ export function NewTrainingDialog({
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Autocomplete
                 freeSolo
-                options={exercisesCatalog}
+                options={exerciseOptions}
                 value={selectedExerciseOption}
                 inputValue={exerciseInputValue}
                 onChange={(_, value) => setSelectedExerciseOption(value)}
                 onInputChange={(_, value) => setExerciseInputValue(value)}
+                getOptionLabel={(option) =>
+                  typeof option === "string" ? option : option.label
+                }
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Stack>
+                      <Typography>{option.label}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.muscleGroup.join(", ")}
+                      </Typography>
+                    </Stack>
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField
                     {...params}

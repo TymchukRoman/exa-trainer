@@ -22,6 +22,7 @@ import { useMemo, useState } from "react";
 import { TrainingSetItem } from "../components/TrainingSetItem";
 import { deleteTrainingSet, updateTrainingSet } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
+import { getExerciseMeta } from "../utils/exerciseCatalog";
 
 export function TrainingsListPage() {
   const {
@@ -173,6 +174,10 @@ export function TrainingsListPage() {
                     <Box key={`${dateGroup.date}-${exerciseGroup.exercise}`}>
                       <Typography variant="subtitle1" fontWeight={700}>
                         {exerciseGroup.exercise}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                        Muscle groups:{" "}
+                        {getExerciseMeta(exerciseGroup.exercise)?.muscleGroup.join(", ") ?? "other"}
                       </Typography>
                       <List dense disablePadding>
                         {exerciseGroup.sets.map((setItem, index) => (
