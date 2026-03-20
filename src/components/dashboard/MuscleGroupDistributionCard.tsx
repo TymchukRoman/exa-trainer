@@ -11,17 +11,23 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
+import { ExerciseRecord } from "../../api/exercises";
 import { TrainingSetRecord } from "../../api/trainings";
-import { getExerciseMeta } from "../../utils/exerciseCatalog";
 
 type TimeWindow = "week" | "month";
 
 export function MuscleGroupDistributionCard({
   trainingSets,
+  exercises,
 }: {
   trainingSets: TrainingSetRecord[];
+  exercises: ExerciseRecord[];
 }) {
   const [window, setWindow] = useState<TimeWindow>("month");
+  const exerciseMap = useMemo(
+    () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
+    [exercises],
+  );
 
   const distribution = useMemo(() => {
     const daysBack = window === "week" ? 7 : 30;
@@ -34,7 +40,7 @@ export function MuscleGroupDistributionCard({
 
     const counts = new Map<string, number>();
     for (const set of filtered) {
-      const groups = getExerciseMeta(set.exercise)?.muscleGroup ?? ["other"];
+      const groups = exerciseMap.get(set.exercise.toLowerCase())?.muscleGroup ?? ["other"];
       for (const group of groups) {
         counts.set(group, (counts.get(group) ?? 0) + 1);
       }
@@ -50,7 +56,7 @@ export function MuscleGroupDistributionCard({
       .sort((a, b) => b.count - a.count);
 
     return { rows, total };
-  }, [trainingSets, window]);
+  }, [trainingSets, window, exerciseMap]);
 
   return (
     <Card variant="outlined">

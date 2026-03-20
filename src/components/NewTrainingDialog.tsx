@@ -18,14 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
 import { saveTrainingSets } from "../api/trainings";
-import exercisesCatalog from "../data/exercises.json";
 import { useAppContext } from "../state/AppContext";
 import { TrainingSetItem } from "./TrainingSetItem";
-
-type ExerciseCatalogItem = {
-  label: string;
-  muscleGroup: string[];
-};
 
 type ExerciseSet = {
   reps: number;
@@ -48,13 +42,13 @@ export function NewTrainingDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const { refetchTrainingSets } = useAppContext();
+  const { refetchTrainingSets, exercises: exerciseOptions } = useAppContext();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [dateStr, setDateStr] = useState(today);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [exerciseInputValue, setExerciseInputValue] = useState("");
   const [selectedExerciseOption, setSelectedExerciseOption] = useState<
-    ExerciseCatalogItem | string | null
+    { label: string; muscleGroup: string[] } | string | null
   >(null);
   const [exercises, setExercises] = useState<ExerciseDraft[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,8 +70,6 @@ export function NewTrainingDialog({
   }, [open, today]);
 
   const canSave = exercises.some((exercise) => exercise.sets.length > 0);
-  const exerciseOptions = exercisesCatalog as ExerciseCatalogItem[];
-
   function resolveExerciseName() {
     if (typeof selectedExerciseOption === "string") {
       return selectedExerciseOption.trim();

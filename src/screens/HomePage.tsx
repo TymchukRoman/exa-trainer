@@ -5,7 +5,7 @@ import { TopExercisesCard } from "../components/dashboard/TopExercisesCard";
 import { useAppContext } from "../state/AppContext";
 
 export function HomePage() {
-  const { trainingSets, isLoadingTrainings } = useAppContext();
+  const { trainingSets, exercises, isLoadingTrainings } = useAppContext();
 
   if (isLoadingTrainings) {
     return (
@@ -40,7 +40,7 @@ export function HomePage() {
           <TopExercisesCard trainingSets={trainingSets} />
         </Box>
 
-        <MuscleGroupDistributionCard trainingSets={trainingSets} />
+        <MuscleGroupDistributionCard trainingSets={trainingSets} exercises={exercises} />
       </Stack>
     </Container>
   );

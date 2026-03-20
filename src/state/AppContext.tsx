@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ExerciseRecord, getExercises } from "../api/exercises";
 import { getTrainingSets, TrainingSetRecord } from "../api/trainings";
 import {
   checkMongoConnection,
@@ -28,9 +29,12 @@ export type AppContextValue = {
   saveThemeMode: (mode: ThemeMode) => Promise<void>;
   reloadSettings: () => Promise<void>;
   trainingSets: TrainingSetRecord[];
+  exercises: ExerciseRecord[];
   groupedTrainingSets: GroupedTrainingByDate[];
   isLoadingTrainings: boolean;
   isFetchingTrainings: boolean;
+  isLoadingExercises: boolean;
+  refetchExercises: () => Promise<void>;
   refetchTrainingSets: () => Promise<void>;
 };
 
@@ -88,8 +92,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     queryFn: getTrainingSets,
     enabled: isConfigured,
   });
+  const exercisesQuery = useQuery({
+    queryKey: ["exercises"],
+    queryFn: getExercises,
+    enabled: isConfigured,
+  });
 
   const trainingSets = trainingsQuery.data ?? [];
+  const exercises = exercisesQuery.data ?? [];
 
   const groupedTrainingSets = useMemo<GroupedTrainingByDate[]>(() => {
     const dateMap = new Map<
@@ -119,6 +129,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refetchTrainingSets = useCallback(async () => {
     await trainingsQuery.refetch();
   }, [trainingsQuery]);
+  const refetchExercises = useCallback(async () => {
+    await exercisesQuery.refetch();
+  }, [exercisesQuery]);
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -133,9 +146,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveThemeMode,
       reloadSettings,
       trainingSets,
+      exercises,
       groupedTrainingSets,
       isLoadingTrainings: trainingsQuery.isLoading,
       isFetchingTrainings: trainingsQuery.isFetching,
+      isLoadingExercises: exercisesQuery.isLoading,
+      refetchExercises,
       refetchTrainingSets,
     }),
     [
@@ -149,9 +165,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveThemeMode,
       reloadSettings,
       trainingSets,
+      exercises,
       groupedTrainingSets,
       trainingsQuery.isLoading,
       trainingsQuery.isFetching,
+      exercisesQuery.isLoading,
+      refetchExercises,
       refetchTrainingSets,
     ],
   );

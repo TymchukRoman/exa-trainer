@@ -22,11 +22,11 @@ import { useMemo, useState } from "react";
 import { TrainingSetItem } from "../components/TrainingSetItem";
 import { deleteTrainingSet, updateTrainingSet } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
-import { getExerciseMeta } from "../utils/exerciseCatalog";
 
 export function TrainingsListPage() {
   const {
     groupedTrainingSets,
+    exercises,
     isLoadingTrainings,
     isFetchingTrainings,
     refetchTrainingSets,
@@ -43,6 +43,10 @@ export function TrainingsListPage() {
       return true;
     });
   }, [groupedTrainingSets, fromDate, toDate]);
+  const exerciseMap = useMemo(
+    () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
+    [exercises],
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSetId, setEditSetId] = useState<string | null>(null);
@@ -177,7 +181,9 @@ export function TrainingsListPage() {
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                         Muscle groups:{" "}
-                        {getExerciseMeta(exerciseGroup.exercise)?.muscleGroup.join(", ") ?? "other"}
+                        {exerciseMap
+                          .get(exerciseGroup.exercise.toLowerCase())
+                          ?.muscleGroup.join(", ") ?? "other"}
                       </Typography>
                       <List dense disablePadding>
                         {exerciseGroup.sets.map((setItem, index) => (
