@@ -15,6 +15,7 @@ import {
 import { useMemo, useState } from "react";
 import { createExercise, deleteExercise } from "../api/exercises";
 import { useAppContext } from "../state/AppContext";
+import { toErrorMessage } from "../utils/errors";
 
 export function ExercisesPage() {
   const { exercises, isLoadingExercises, refetchExercises } = useAppContext();
@@ -64,7 +65,7 @@ export function ExercisesPage() {
     } catch (error) {
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "Failed to create exercise.",
+        message: toErrorMessage(error, "Failed to create exercise."),
       });
     } finally {
       setIsSaving(false);
@@ -81,7 +82,7 @@ export function ExercisesPage() {
     } catch (error) {
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "Failed to delete exercise.",
+        message: toErrorMessage(error, "Failed to delete exercise."),
       });
     } finally {
       setDeletingId(null);

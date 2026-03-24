@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ThemeMode } from "../api/settings";
 import { useAppContext } from "../state/AppContext";
+import { toErrorMessage } from "../utils/errors";
 
 export function SettingsPage() {
   const {
@@ -59,6 +60,7 @@ export function SettingsPage() {
           value={draftMongoUrl}
           onChange={(e) => setDraftMongoUrl(e.currentTarget.value)}
           placeholder="mongodb://localhost:27017"
+          helperText="On Android, localhost points to the phone itself. Use a reachable LAN/public Mongo host."
           fullWidth
         />
 
@@ -79,7 +81,7 @@ export function SettingsPage() {
               } catch (error) {
                 setStatus({
                   type: "error",
-                  message: error instanceof Error ? error.message : "Connection check failed.",
+                  message: toErrorMessage(error, "Connection check failed."),
                 });
               } finally {
                 setIsChecking(false);
@@ -100,7 +102,7 @@ export function SettingsPage() {
               } catch (error) {
                 setStatus({
                   type: "error",
-                  message: error instanceof Error ? error.message : "Failed to save MongoDB URL.",
+                  message: toErrorMessage(error, "Failed to save MongoDB URL."),
                 });
               } finally {
                 setIsSaving(false);
@@ -133,7 +135,7 @@ export function SettingsPage() {
               } catch (error) {
                 setStatus({
                   type: "error",
-                  message: error instanceof Error ? error.message : "Failed to save theme.",
+                  message: toErrorMessage(error, "Failed to save theme."),
                 });
               }
             }}

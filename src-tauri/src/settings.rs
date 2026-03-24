@@ -1,9 +1,11 @@
+use mongodb::bson::doc;
+use mongodb::Client;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
-use std::time::Duration;
 use tauri::Manager;
+
+use crate::mongo::validate_mongo_url_for_platform;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub(crate) struct LocalSettings {
@@ -79,41 +81,24 @@ pub fn set_theme_mode(app: tauri::AppHandle, mode: String) -> Result<(), String>
 }
 
 #[tauri::command]
-pub fn check_mongo_connection(url: String) -> Result<bool, String> {
+pub async fn check_mongo_connection(url: String) -> Result<bool, String> {
     let trimmed = url.trim();
     if !(trimmed.starts_with("mongodb://") || trimmed.starts_with("mongodb+srv://")) {
         return Err("Connection string must start with mongodb:// or mongodb+srv://".to_string());
     }
-    if trimmed.starts_with("mongodb+srv://") {
-        return Ok(true);
-    }
+    validate_mongo_url_for_platform(trimmed)?;
 
-    let without_scheme = trimmed.trim_start_matches("mongodb://");
-    let host_port = without_scheme
-        .split('@')
-        .next_back()
-        .and_then(|s| s.split('/').next())
-        .ok_or_else(|| "Invalid MongoDB connection string".to_string())?;
+    let client = Client::with_uri_str(trimmed)
+        .await
+        .map_err(|e| format!("Failed to initialize MongoDB client: {e}"))?;
 
-    let primary = host_port
-        .split(',')
-        .next()
-        .ok_or_else(|| "Invalid MongoDB host segment".to_string())?;
-    let primary_with_port = if primary.contains(':') {
-        primary.to_string()
-    } else {
-        format!("{primary}:27017")
-    };
+    client
+        .database("admin")
+        .run_command(doc! { "ping": 1 })
+        .await
+        .map_err(|e| format!("Failed to connect to MongoDB: {e}"))?;
 
-    let mut addrs = primary_with_port
-        .to_socket_addrs()
-        .map_err(|_| "Unable to resolve MongoDB host".to_string())?;
-    let addr = addrs
-        .next()
-        .ok_or_else(|| "Unable to resolve MongoDB host".to_string())?;
-    TcpStream::connect_timeout(&addr, Duration::from_secs(3))
-        .map(|_| true)
-        .map_err(|e| format!("Unable to connect to MongoDB host: {e}"))
+    Ok(true)
 }
 
 #[tauri::command]

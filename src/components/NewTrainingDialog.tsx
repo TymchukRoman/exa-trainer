@@ -19,6 +19,7 @@ import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
 import { saveTrainingSets } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
+import { toErrorMessage } from "../utils/errors";
 import { TrainingSetItem } from "./TrainingSetItem";
 
 type ExerciseSet = {
@@ -338,10 +339,7 @@ export function NewTrainingDialog({
             } catch (error) {
               setStatus({
                 type: "error",
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to save training sets.",
+                message: toErrorMessage(error, "Failed to save training sets."),
               });
             } finally {
               setIsSaving(false);
