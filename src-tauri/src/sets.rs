@@ -9,6 +9,7 @@ pub struct TrainingSetInput {
     exercise: String,
     reps: i32,
     weight: f64,
+    duration_ms: Option<i64>,
     date: String,
 }
 
@@ -18,6 +19,7 @@ pub struct TrainingSetOutput {
     exercise: String,
     reps: i32,
     weight: f64,
+    duration_ms: Option<i64>,
     date_ms: i64,
 }
 
@@ -25,6 +27,7 @@ pub struct TrainingSetOutput {
 pub struct TrainingSetUpdateInput {
     reps: i32,
     weight: f64,
+    duration_ms: Option<i64>,
 }
 
 #[tauri::command]
@@ -47,8 +50,13 @@ pub async fn save_training_sets(
             if set_item.exercise.trim().is_empty() {
                 return Err("Exercise name cannot be empty".to_string());
             }
-            if set_item.reps <= 0 {
+            if set_item.duration_ms.is_none() && set_item.reps <= 0 {
                 return Err("Reps must be greater than zero".to_string());
+            }
+            if let Some(duration_ms) = set_item.duration_ms {
+                if duration_ms <= 0 {
+                    return Err("Duration must be greater than zero".to_string());
+                }
             }
             if !set_item.weight.is_finite() {
                 return Err("Weight must be a finite number".to_string());
@@ -61,6 +69,7 @@ pub async fn save_training_sets(
                 "exercise": set_item.exercise.trim(),
                 "reps": set_item.reps,
                 "weight": set_item.weight,
+                "duration_ms": set_item.duration_ms,
                 "date": date,
             })
         })
@@ -112,12 +121,14 @@ pub async fn get_training_sets(app: tauri::AppHandle) -> Result<Vec<TrainingSetO
             .get_datetime("date")
             .map_err(|_| "Invalid set document: missing date".to_string())?
             .timestamp_millis();
+        let duration_ms = doc.get_i64("duration_ms").ok();
 
         output.push(TrainingSetOutput {
             id,
             exercise,
             reps,
             weight,
+            duration_ms,
             date_ms,
         });
     }
@@ -147,8 +158,13 @@ pub async fn update_training_set(
     id: String,
     input: TrainingSetUpdateInput,
 ) -> Result<u64, String> {
-    if input.reps <= 0 {
+    if input.duration_ms.is_none() && input.reps <= 0 {
         return Err("Reps must be greater than zero".to_string());
+    }
+    if let Some(duration_ms) = input.duration_ms {
+        if duration_ms <= 0 {
+            return Err("Duration must be greater than zero".to_string());
+        }
     }
     if !input.weight.is_finite() {
         return Err("Weight must be a finite number".to_string());
@@ -160,11 +176,19 @@ pub async fn update_training_set(
         .database("EXA_TRAINER")
         .collection::<Document>("sets");
 
+    let mut set_doc = doc! { "reps": input.reps, "weight": input.weight };
+    if let Some(duration_ms) = input.duration_ms {
+        set_doc.insert("duration_ms", duration_ms);
+    }
+
+    let update_doc = if input.duration_ms.is_some() {
+        doc! { "$set": set_doc }
+    } else {
+        doc! { "$set": set_doc, "$unset": { "duration_ms": "" } }
+    };
+
     let result = collection
-        .update_one(
-            doc! { "_id": object_id },
-            doc! { "$set": { "reps": input.reps, "weight": input.weight } },
-        )
+        .update_one(doc! { "_id": object_id }, update_doc)
         .await
         .map_err(|e| format!("Failed to update set: {e}"))?;
 

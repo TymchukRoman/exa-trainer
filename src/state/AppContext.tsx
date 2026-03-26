@@ -42,7 +42,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export type GroupedTrainingByExercise = {
   exercise: string;
-  sets: Array<{ id: string; reps: number; weight: number }>;
+  sets: Array<{ id: string; reps: number; weight: number; durationMs?: number }>;
 };
 
 export type GroupedTrainingByDate = {
@@ -104,13 +104,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const groupedTrainingSets = useMemo<GroupedTrainingByDate[]>(() => {
     const dateMap = new Map<
       string,
-      Map<string, Array<{ id: string; reps: number; weight: number }>>
+      Map<string, Array<{ id: string; reps: number; weight: number; durationMs?: number }>>
     >();
 
     for (const setItem of trainingSets) {
       const exerciseMap = dateMap.get(setItem.date) ?? new Map();
       const setsForExercise = exerciseMap.get(setItem.exercise) ?? [];
-      setsForExercise.push({ id: setItem.id, reps: setItem.reps, weight: setItem.weight });
+      setsForExercise.push({
+        id: setItem.id,
+        reps: setItem.reps,
+        weight: setItem.weight,
+        durationMs: setItem.durationMs,
+      });
       exerciseMap.set(setItem.exercise, setsForExercise);
       dateMap.set(setItem.date, exerciseMap);
     }

@@ -1,20 +1,35 @@
-import { Box, Card, CardContent, Divider, Paper, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Card, CardContent, Divider, Stack, Tooltip, Typography } from "@mui/material";
 import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
 import { useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
 import { TrainingSetRecord } from "../../api/trainings";
 import { getDaySummaryMap } from "../../utils/trainingStats";
 
+dayjs.extend(isoWeek);
+
+const WEEKS = 15;
+
 export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRecord[] }) {
   const theme = useTheme();
 
   const heatmap = useMemo(() => {
-    const daysToShow = 180;
-    const start = dayjs().subtract(daysToShow - 1, "day").startOf("day");
-    const days = Array.from({ length: daysToShow }, (_, idx) => start.add(idx, "day"));
+    const today = dayjs().startOf("day");
+    const currentMonday = today.startOf("isoWeek");
+    const oldestMonday = currentMonday.subtract(WEEKS - 1, "week");
+
+    const cells: { day: dayjs.Dayjs; inRange: boolean }[] = [];
+    for (let w = 0; w < WEEKS; w++) {
+      const monday = oldestMonday.add(w, "week");
+      for (let d = 0; d < 7; d++) {
+        const day = monday.add(d, "day");
+        const inRange = !day.isAfter(today, "day");
+        cells.push({ day, inRange });
+      }
+    }
 
     const summary = getDaySummaryMap(trainingSets);
-    const counts = days.map((d) => summary.get(d.format("YYYY-MM-DD"))?.count ?? 0);
+    const counts = cells.filter((c) => c.inRange).map((c) => summary.get(c.day.format("YYYY-MM-DD"))?.count ?? 0);
     const nonZero = counts.filter((c) => c > 0);
     const max = nonZero.length ? Math.max(...nonZero) : 0;
 
@@ -36,7 +51,7 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
     const darkModeColors = ["#2a2a2a", "#2f4f7a", "#2e6da4", "#2c8be3", "#1a73e8"];
     const colors = theme.palette.mode === "dark" ? darkModeColors : lightModeColors;
 
-    return { days, summary, counts, max, level, colors };
+    return { cells, summary, max, level, colors };
   }, [trainingSets, theme.palette.mode]);
 
   return (
@@ -48,7 +63,7 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
               Training days
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Last {Math.round(heatmap.days.length / 7)} weeks
+              Last {WEEKS} weeks
             </Typography>
           </Stack>
 
@@ -59,7 +74,7 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
               No training data yet. Click the + button to add your first sets.
             </Typography>
           ) : (
-            <Paper variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ p: 2 }}>
               <Box
                 sx={{
                   display: "grid",
@@ -71,11 +86,13 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
                   overflowX: "auto",
                 }}
               >
-                {heatmap.days.map((d) => {
-                  const dateStr = d.format("YYYY-MM-DD");
+                {heatmap.cells.map(({ day, inRange }) => {
+                  const dateStr = day.format("YYYY-MM-DD");
+                  if (!inRange) {
+                    return <Box key={`empty-${dateStr}`} sx={{ width: 12, height: 12 }} />;
+                  }
                   const details = heatmap.summary.get(dateStr);
                   const count = details?.count ?? 0;
-                  const exerciseCount = details?.exercises.length ?? 0;
                   const l = heatmap.level(count);
 
                   return (
@@ -87,7 +104,9 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
                           <Typography variant="body2" fontWeight={700}>
                             {dateStr}
                           </Typography>
-                          <Typography variant="body2">{count} set{count === 1 ? "" : "s"}</Typography>
+                          <Typography variant="body2">
+                            {count} set{count === 1 ? "" : "s"}
+                          </Typography>
                           {details?.exercises.length ? (
                             <Box sx={{ mt: 0.5 }}>
                               {details.exercises.slice(0, 4).map((item) => (
@@ -106,9 +125,6 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
                           height: 12,
                           borderRadius: "3px",
                           backgroundColor: heatmap.colors[l],
-                          border: exerciseCount >= 3 ? "1px solid" : "1px solid rgba(0,0,0,0.03)",
-                          borderColor: exerciseCount >= 3 ? "warning.main" : "transparent",
-                          boxShadow: exerciseCount >= 3 ? "0 0 0 1px rgba(0,0,0,0.04)" : "none",
                         }}
                       />
                     </Tooltip>
@@ -137,11 +153,10 @@ export function TrainingDaysCard({ trainingSets }: { trainingSets: TrainingSetRe
                   More
                 </Typography>
               </Stack>
-            </Paper>
+            </Box>
           )}
         </Stack>
       </CardContent>
     </Card>
   );
 }
-

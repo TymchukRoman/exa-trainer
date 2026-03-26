@@ -5,24 +5,31 @@ import {
   ListItemText,
   ListItemSecondaryAction,
 } from "@mui/material";
+import { formatDurationMs } from "../utils/duration";
 
 export function TrainingSetItem({
   index,
   reps,
   weight,
+  durationMs,
+  isBodyweightOnly,
   onEdit,
   onDelete,
 }: {
   index: number;
   reps: number;
   weight: number;
+  durationMs?: number;
+  isBodyweightOnly?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
+  const performanceText = durationMs ? formatDurationMs(durationMs) : `${reps} reps`;
+  const loadText = isBodyweightOnly ? "" : ` @ ${weight} kg`;
   return (
     <ListItem disableGutters>
       <ListItemText
-        primary={`Set ${index + 1}: ${reps} reps @ ${weight} kg`}
+        primary={`Set ${index + 1}: ${performanceText}${loadText}`}
       />
       {(onEdit || onDelete) && (
         <ListItemSecondaryAction>

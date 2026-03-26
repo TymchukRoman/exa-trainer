@@ -22,6 +22,7 @@ import { useMemo, useState } from "react";
 import { TrainingSetItem } from "../components/TrainingSetItem";
 import { deleteTrainingSet, updateTrainingSet } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
+import { formatDurationMs, parseDurationToMs } from "../utils/duration";
 
 export function TrainingsListPage() {
   const {
@@ -50,18 +51,25 @@ export function TrainingsListPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSetId, setEditSetId] = useState<string | null>(null);
+  const [editExerciseName, setEditExerciseName] = useState<string>("");
   const [editReps, setEditReps] = useState<string>("");
+  const [editDuration, setEditDuration] = useState<string>("");
   const [editWeight, setEditWeight] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const openEdit = (set: { id: string; reps: number; weight: number }) => {
+  const openEdit = (set: { id: string; reps: number; weight: number; durationMs?: number }, exerciseName: string) => {
     setEditSetId(set.id);
+    setEditExerciseName(exerciseName);
     setEditReps(String(set.reps));
+    setEditDuration(set.durationMs ? formatDurationMs(set.durationMs) : "");
     setEditWeight(String(set.weight));
     setEditStatus(null);
     setEditOpen(true);
   };
+  const editingExercise = exerciseMap.get(editExerciseName.toLowerCase());
+  const isDurationExercise = editingExercise?.usesDuration ?? false;
+  const isBodyweightOnly = editingExercise?.isBodyweightOnly ?? false;
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteSetId, setDeleteSetId] = useState<string | null>(null);
@@ -77,20 +85,26 @@ export function TrainingsListPage() {
     if (!editSetId) return;
     setEditStatus(null);
 
-    const reps = Number(editReps);
-    const weight = Number(editWeight);
-    if (!Number.isFinite(reps) || reps <= 0) {
+    const reps = isDurationExercise ? 1 : Number(editReps);
+    const parsedDuration = isDurationExercise ? parseDurationToMs(editDuration) : null;
+    const durationMs = parsedDuration ?? undefined;
+    const weight = isBodyweightOnly ? 0 : Number(editWeight);
+    if (!isDurationExercise && (!Number.isFinite(reps) || reps <= 0)) {
       setEditStatus("Reps must be greater than zero.");
       return;
     }
-    if (!Number.isFinite(weight)) {
+    if (isDurationExercise && !parsedDuration) {
+      setEditStatus("Duration format must be like 1h 2m 1s.");
+      return;
+    }
+    if (!isBodyweightOnly && !Number.isFinite(weight)) {
       setEditStatus("Weight must be a valid number.");
       return;
     }
 
     setIsEditing(true);
     try {
-      await updateTrainingSet({ id: editSetId, reps, weight });
+      await updateTrainingSet({ id: editSetId, reps, weight, durationMs });
       await refetchTrainingSets();
       setEditOpen(false);
     } catch (e) {
@@ -192,7 +206,9 @@ export function TrainingsListPage() {
                             index={index}
                             reps={setItem.reps}
                             weight={setItem.weight}
-                            onEdit={() => openEdit(setItem)}
+                            durationMs={setItem.durationMs}
+                            isBodyweightOnly={exerciseMap.get(exerciseGroup.exercise.toLowerCase())?.isBodyweightOnly}
+                            onEdit={() => openEdit(setItem, exerciseGroup.exercise)}
                             onDelete={() => openDelete(setItem.id)}
                           />
                         ))}
@@ -211,22 +227,34 @@ export function TrainingsListPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {editStatus ? <Alert severity="error">{editStatus}</Alert> : null}
-            <TextField
-              label="Reps"
-              type="number"
-              value={editReps}
-              onChange={(e) => setEditReps(e.currentTarget.value)}
-              inputProps={{ min: 1 }}
-              fullWidth
-            />
-            <TextField
-              label="Weight (kg)"
-              type="number"
-              value={editWeight}
-              onChange={(e) => setEditWeight(e.currentTarget.value)}
-              inputProps={{ min: -999999, step: 0.5 }}
-              fullWidth
-            />
+            {isDurationExercise ? (
+              <TextField
+                label="Duration"
+                placeholder="1h 2m 1s"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.currentTarget.value)}
+                fullWidth
+              />
+            ) : (
+              <TextField
+                label="Reps"
+                type="number"
+                value={editReps}
+                onChange={(e) => setEditReps(e.currentTarget.value)}
+                inputProps={{ min: 1 }}
+                fullWidth
+              />
+            )}
+            {isBodyweightOnly ? null : (
+              <TextField
+                label="Weight (kg)"
+                type="number"
+                value={editWeight}
+                onChange={(e) => setEditWeight(e.currentTarget.value)}
+                inputProps={{ min: -999999, step: 0.5 }}
+                fullWidth
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

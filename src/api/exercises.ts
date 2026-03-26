@@ -5,6 +5,8 @@ type ExerciseOutputDto = {
   label: string;
   muscleGroup: string[];
   isDefault: boolean;
+  isBodyweightOnly: boolean;
+  usesDuration: boolean;
 };
 
 export type ExerciseRecord = {
@@ -12,6 +14,8 @@ export type ExerciseRecord = {
   label: string;
   muscleGroup: string[];
   isDefault: boolean;
+  isBodyweightOnly: boolean;
+  usesDuration: boolean;
 };
 
 export async function getExercises(): Promise<ExerciseRecord[]> {
@@ -21,12 +25,16 @@ export async function getExercises(): Promise<ExerciseRecord[]> {
     label: item.label,
     muscleGroup: item.muscleGroup,
     isDefault: item.isDefault,
+    isBodyweightOnly: item.isBodyweightOnly ?? false,
+    usesDuration: item.usesDuration ?? false,
   }));
 }
 
 export async function createExercise(input: {
   label: string;
   muscleGroup: string[];
+  isBodyweightOnly: boolean;
+  usesDuration: boolean;
 }): Promise<string> {
   return invoke<string>("create_exercise", { input });
 }

@@ -8,7 +8,13 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -24,8 +30,11 @@ export function ExercisesPage() {
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null,
   );
+  const [isBodyweightOnly, setIsBodyweightOnly] = useState(false);
+  const [usesDuration, setUsesDuration] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const sortedExercises = useMemo(
     () => [...exercises].sort((a, b) => a.label.localeCompare(b.label)),
@@ -54,13 +63,20 @@ export function ExercisesPage() {
       setStatus({ type: "error", message: "Add at least one muscle group." });
       return;
     }
+    const duplicate = exercises.find((item) => item.label.toLowerCase() === label.toLowerCase());
+    if (duplicate) {
+      setDuplicateWarning(duplicate.label);
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await createExercise({ label, muscleGroup });
+      await createExercise({ label, muscleGroup, isBodyweightOnly, usesDuration });
       await refetchExercises();
       setName("");
       setSelectedMuscleGroups([]);
+      setIsBodyweightOnly(false);
+      setUsesDuration(false);
       setStatus({ type: "success", message: "Exercise added." });
     } catch (error) {
       setStatus({
@@ -103,10 +119,20 @@ export function ExercisesPage() {
           <CardContent>
             <Stack spacing={1.5}>
               {status ? <Alert severity={status.type}>{status.message}</Alert> : null}
-              <TextField
-                label="Exercise name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+              <Autocomplete
+                freeSolo
+                options={sortedExercises.map((item) => item.label)}
+                inputValue={name}
+                onInputChange={(_, value) => setName(value)}
+                onChange={(_, value) => setName(typeof value === "string" ? value : "")}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Exercise name"
+                    helperText="Type to see similar existing exercises."
+                    fullWidth
+                  />
+                )}
                 fullWidth
               />
               <Autocomplete
@@ -124,6 +150,26 @@ export function ExercisesPage() {
                   />
                 )}
               />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isBodyweightOnly}
+                      onChange={(e) => setIsBodyweightOnly(e.target.checked)}
+                    />
+                  }
+                  label="Bodyweight only (disable weight input)"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={usesDuration}
+                      onChange={(e) => setUsesDuration(e.target.checked)}
+                    />
+                  }
+                  label="Track duration instead of reps"
+                />
+              </Stack>
               <Box>
                 <Button variant="contained" onClick={handleCreate} disabled={isSaving}>
                   Add custom exercise
@@ -157,6 +203,14 @@ export function ExercisesPage() {
                       <Typography variant="caption" color="text.secondary">
                         {item.muscleGroup.join(", ")}
                       </Typography>
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
+                        {item.isBodyweightOnly ? (
+                          <Chip label="Bodyweight" size="small" variant="outlined" />
+                        ) : null}
+                        {item.usesDuration ? (
+                          <Chip label="Duration" size="small" variant="outlined" />
+                        ) : null}
+                      </Stack>
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
                       {item.isDefault ? (
@@ -182,6 +236,21 @@ export function ExercisesPage() {
           </Card>
         )}
       </Stack>
+      <Dialog open={Boolean(duplicateWarning)} onClose={() => setDuplicateWarning(null)}>
+        <DialogTitle>Exercise already exists</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {duplicateWarning
+              ? `"${duplicateWarning}" already exists. Please use another name or reuse the existing exercise.`
+              : "This exercise already exists."}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDuplicateWarning(null)} autoFocus>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

@@ -18,6 +18,8 @@ pub struct ExerciseOutput {
     label: String,
     muscle_group: Vec<String>,
     is_default: bool,
+    is_bodyweight_only: bool,
+    uses_duration: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -25,6 +27,8 @@ pub struct ExerciseOutput {
 pub struct CreateExerciseInput {
     label: String,
     muscle_group: Vec<String>,
+    is_bodyweight_only: bool,
+    uses_duration: bool,
 }
 
 const DEFAULT_EXERCISES_JSON: &str = include_str!("../../src/data/exercises.json");
@@ -50,7 +54,9 @@ async fn seed_default_exercises_if_empty(
                 "label": item.label.trim().to_string(),
                 "label_lower": item.label.trim().to_lowercase(),
                 "muscle_group": item.muscle_group,
-                "is_default": true
+                "is_default": true,
+                "is_bodyweight_only": false,
+                "uses_duration": false
             }
         })
         .collect();
@@ -93,6 +99,8 @@ pub async fn get_exercises(app: tauri::AppHandle) -> Result<Vec<ExerciseOutput>,
             .map_err(|_| "Invalid exercise document: missing label".to_string())?
             .to_string();
         let is_default = doc.get_bool("is_default").unwrap_or(false);
+        let is_bodyweight_only = doc.get_bool("is_bodyweight_only").unwrap_or(false);
+        let uses_duration = doc.get_bool("uses_duration").unwrap_or(false);
         let muscle_group = doc
             .get_array("muscle_group")
             .map_err(|_| "Invalid exercise document: missing muscle_group".to_string())?
@@ -105,6 +113,8 @@ pub async fn get_exercises(app: tauri::AppHandle) -> Result<Vec<ExerciseOutput>,
             label,
             muscle_group,
             is_default,
+            is_bodyweight_only,
+            uses_duration,
         });
     }
     Ok(output)
@@ -148,7 +158,9 @@ pub async fn create_exercise(
             "label": label.to_string(),
             "label_lower": label.to_lowercase(),
             "muscle_group": muscle_group,
-            "is_default": false
+            "is_default": false,
+            "is_bodyweight_only": input.is_bodyweight_only,
+            "uses_duration": input.uses_duration
         })
         .await
         .map_err(|e| format!("Failed to create exercise: {e}"))?;

@@ -13,6 +13,13 @@ export type PersonalRecordStat = {
   date: string;
 };
 
+export type DurationRecordStat = {
+  exercise: string;
+  durationMs: number;
+  weight: number;
+  date: string;
+};
+
 export type DaySummary = {
   count: number;
   exercises: Array<{ exercise: string; sets: number }>;
@@ -37,7 +44,8 @@ export function getTopExercises(trainingSets: TrainingSetRecord[]): TopExerciseS
     .slice(0, 5);
 }
 
-export function getPersonalRecords(trainingSets: TrainingSetRecord[]): PersonalRecordStat[] {
+/** Best set per exercise by max weight (ties: higher reps wins). */
+export function getMaxWeightRecords(trainingSets: TrainingSetRecord[]): PersonalRecordStat[] {
   const map = new Map<string, { weight: number; reps: number; date: string }>();
 
   for (const set of trainingSets) {
@@ -56,6 +64,51 @@ export function getPersonalRecords(trainingSets: TrainingSetRecord[]): PersonalR
   return [...map.entries()]
     .map(([exercise, record]) => ({ exercise, ...record }))
     .sort((a, b) => b.weight - a.weight);
+}
+
+/** Best set per exercise by max reps (ties: higher weight wins). */
+export function getMaxRepsRecords(trainingSets: TrainingSetRecord[]): PersonalRecordStat[] {
+  const map = new Map<string, { weight: number; reps: number; date: string }>();
+
+  for (const set of trainingSets) {
+    const current = map.get(set.exercise);
+    if (!current) {
+      map.set(set.exercise, { weight: set.weight, reps: set.reps, date: set.date });
+      continue;
+    }
+    if (set.reps > current.reps) {
+      map.set(set.exercise, { weight: set.weight, reps: set.reps, date: set.date });
+    } else if (set.reps === current.reps && set.weight > current.weight) {
+      map.set(set.exercise, { weight: set.weight, reps: set.reps, date: set.date });
+    }
+  }
+
+  return [...map.entries()]
+    .map(([exercise, record]) => ({ exercise, ...record }))
+    .sort((a, b) => b.reps - a.reps || b.weight - a.weight);
+}
+
+/** Best set per exercise by max duration (ties: higher weight wins). */
+export function getMaxDurationRecords(trainingSets: TrainingSetRecord[]): DurationRecordStat[] {
+  const map = new Map<string, { durationMs: number; weight: number; date: string }>();
+
+  for (const set of trainingSets) {
+    if (!set.durationMs || set.durationMs <= 0) continue;
+    const current = map.get(set.exercise);
+    if (!current) {
+      map.set(set.exercise, { durationMs: set.durationMs, weight: set.weight, date: set.date });
+      continue;
+    }
+    if (set.durationMs > current.durationMs) {
+      map.set(set.exercise, { durationMs: set.durationMs, weight: set.weight, date: set.date });
+    } else if (set.durationMs === current.durationMs && set.weight > current.weight) {
+      map.set(set.exercise, { durationMs: set.durationMs, weight: set.weight, date: set.date });
+    }
+  }
+
+  return [...map.entries()]
+    .map(([exercise, record]) => ({ exercise, ...record }))
+    .sort((a, b) => b.durationMs - a.durationMs || b.weight - a.weight);
 }
 
 export function getDaySummaryMap(trainingSets: TrainingSetRecord[]): Map<string, DaySummary> {

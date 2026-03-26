@@ -1,4 +1,6 @@
 import {
+  Autocomplete,
+  Chip,
   Box,
   Card,
   CardContent,
@@ -12,17 +14,44 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart, LineChart } from "@mui/x-charts";
 import { useAppContext } from "../state/AppContext";
 import dayjs from "dayjs";
+import { formatDurationMs } from "../utils/duration";
 
 type SessionAgg = {
   date: string;
   sets: number;
   reps: number;
+  durationMs: number;
   avgWeight: number;
   maxWeight: number;
 };
 
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
+          {title}
+        </Typography>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ProgressionPage() {
   const { trainingSets, exercises, isLoadingTrainings } = useAppContext();
+
+  const daysByExercise = useMemo(() => {
+    const byExercise = new Map<string, Set<string>>();
+    for (const set of trainingSets) {
+      const byDate = byExercise.get(set.exercise) ?? new Set<string>();
+      byDate.add(set.date);
+      byExercise.set(set.exercise, byDate);
+    }
+    return new Map<string, number>(
+      [...byExercise.entries()].map(([exerciseName, days]) => [exerciseName, days.size]),
+    );
+  }, [trainingSets]);
 
   const selectableExercises = useMemo(() => {
     const names = new Set<string>(exercises.map((e) => e.label));
@@ -31,6 +60,10 @@ export function ProgressionPage() {
   }, [exercises, trainingSets]);
 
   const [exercise, setExercise] = useState<string>(selectableExercises[0] ?? "");
+  const selectedExerciseMeta = useMemo(
+    () => exercises.find((item) => item.label.toLowerCase() === exercise.toLowerCase()),
+    [exercises, exercise],
+  );
   useEffect(() => {
     if (!exercise && selectableExercises.length > 0) {
       setExercise(selectableExercises[0]);
@@ -47,16 +80,21 @@ export function ProgressionPage() {
   );
 
   const sessions = useMemo<SessionAgg[]>(() => {
-    const byDate = new Map<string, { sets: number; reps: number; sumWeight: number; maxWeight: number }>();
+    const byDate = new Map<
+      string,
+      { sets: number; reps: number; durationMs: number; sumWeight: number; maxWeight: number }
+    >();
     for (const set of filtered) {
       const current = byDate.get(set.date) ?? {
         sets: 0,
         reps: 0,
+        durationMs: 0,
         sumWeight: 0,
         maxWeight: Number.NEGATIVE_INFINITY,
       };
       current.sets += 1;
       current.reps += set.reps;
+      current.durationMs += set.durationMs ?? 0;
       current.sumWeight += set.weight;
       current.maxWeight = Math.max(current.maxWeight, set.weight);
       byDate.set(set.date, current);
@@ -67,6 +105,7 @@ export function ProgressionPage() {
         date,
         sets: agg.sets,
         reps: agg.reps,
+        durationMs: agg.durationMs,
         avgWeight: agg.sets ? agg.sumWeight / agg.sets : 0,
         maxWeight: Number.isFinite(agg.maxWeight) ? agg.maxWeight : 0,
       }));
@@ -111,23 +150,27 @@ export function ProgressionPage() {
           Progression
         </Typography>
         <Typography color="text.secondary">
-          Exercise-level progression by sets, reps, weights and frequency.
+          Exercise-level progression by sets, reps/time, weights and frequency.
         </Typography>
 
-        <TextField
-          select
+        <Autocomplete
           fullWidth
-          label="Exercise"
-          value={exercise}
-          onChange={(e) => setExercise(e.target.value)}
-          SelectProps={{ native: true }}
-        >
-          {selectableExercises.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </TextField>
+          options={selectableExercises}
+          value={exercise || null}
+          onChange={(_, value) => setExercise(value ?? "")}
+          getOptionLabel={(option) => option}
+          renderOption={(props, option) => (
+            <li {...props}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                <Typography>{option}</Typography>
+                {daysByExercise.get(option) ? (
+                  <Chip size="small" label={`${daysByExercise.get(option)} days`} />
+                ) : null}
+              </Box>
+            </li>
+          )}
+          renderInput={(params) => <TextField {...params} label="Exercise" />}
+        />
 
         {filtered.length === 0 ? (
           <Card variant="outlined">
@@ -169,64 +212,63 @@ export function ProgressionPage() {
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
                 gap: 2,
               }}
             >
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
-                    Sets per session
-                  </Typography>
-                  <LineChart
-                    height={280}
-                    xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
-                    series={[{ data: sessions.map((s) => s.sets), label: "Sets" }]}
-                  />
-                </CardContent>
-              </Card>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
-                    Reps per session
-                  </Typography>
-                  <LineChart
-                    height={280}
-                    xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
-                    series={[{ data: sessions.map((s) => s.reps), label: "Reps" }]}
-                  />
-                </CardContent>
-              </Card>
-            </Box>
-
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
-                  Weight progression
-                </Typography>
+              <ChartCard title="Sets per session">
+                <LineChart
+                  height={280}
+                  xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
+                  series={[{ data: sessions.map((s) => s.sets), label: "Sets" }]}
+                />
+              </ChartCard>
+              <ChartCard title={selectedExerciseMeta?.usesDuration ? "Time per session" : "Reps per session"}>
                 <LineChart
                   height={280}
                   xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
                   series={[
-                    { data: sessions.map((s) => s.avgWeight), label: "Avg weight (kg)" },
-                    { data: sessions.map((s) => s.maxWeight), label: "Max weight (kg)" },
+                    selectedExerciseMeta?.usesDuration
+                      ? {
+                          data: sessions.map((s) => s.durationMs / 1000),
+                          label: "Duration (seconds)",
+                        }
+                      : { data: sessions.map((s) => s.reps), label: "Reps" },
                   ]}
                 />
-              </CardContent>
-            </Card>
-
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
-                  Exercise frequency (weekly)
-                </Typography>
+              </ChartCard>
+              <ChartCard title={selectedExerciseMeta?.usesDuration ? "Duration progression" : "Weight progression"}>
+                {selectedExerciseMeta?.usesDuration ? (
+                  <LineChart
+                    height={280}
+                    xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
+                    series={[{ data: sessions.map((s) => s.durationMs / 1000), label: "Duration (seconds)" }]}
+                  />
+                ) : (
+                  <LineChart
+                    height={280}
+                    xAxis={[{ data: sessions.map((s) => s.date), scaleType: "point" }]}
+                    series={[
+                      { data: sessions.map((s) => s.avgWeight), label: "Avg weight (kg)" },
+                      { data: sessions.map((s) => s.maxWeight), label: "Max weight (kg)" },
+                    ]}
+                  />
+                )}
+              </ChartCard>
+              <ChartCard title="Exercise frequency (weekly)">
                 <BarChart
                   height={260}
                   xAxis={[{ data: weeklyFrequency.map((w) => w.week), scaleType: "band" }]}
                   series={[{ data: weeklyFrequency.map((w) => w.count), label: "Sets per week" }]}
                 />
-              </CardContent>
-            </Card>
+              </ChartCard>
+            </Box>
+            {selectedExerciseMeta?.usesDuration ? (
+              <Typography variant="body2" color="text.secondary">
+                Total tracked time:{" "}
+                {formatDurationMs(sessions.reduce((acc, item) => acc + item.durationMs, 0))}
+              </Typography>
+            ) : null}
           </>
         )}
       </Stack>

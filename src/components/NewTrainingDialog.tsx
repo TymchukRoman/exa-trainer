@@ -19,20 +19,24 @@ import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
 import { saveTrainingSets } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
+import { parseDurationToMs } from "../utils/duration";
 import { toErrorMessage } from "../utils/errors";
 import { TrainingSetItem } from "./TrainingSetItem";
 
 type ExerciseSet = {
   reps: number;
   weight: number;
+  durationMs?: number;
 };
 
 type ExerciseDraft = {
   id: string;
   name: string;
+  isBodyweightOnly: boolean;
+  usesDuration: boolean;
   sets: ExerciseSet[];
   isAddingSet: boolean;
-  repsInput: string;
+  metricInput: string;
   weightInput: string;
 };
 
@@ -49,7 +53,7 @@ export function NewTrainingDialog({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [exerciseInputValue, setExerciseInputValue] = useState("");
   const [selectedExerciseOption, setSelectedExerciseOption] = useState<
-    { label: string; muscleGroup: string[] } | string | null
+    { label: string; muscleGroup: string[]; isBodyweightOnly: boolean; usesDuration: boolean } | string | null
   >(null);
   const [exercises, setExercises] = useState<ExerciseDraft[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,14 +99,18 @@ export function NewTrainingDialog({
       return;
     }
 
+    const meta = exerciseOptions.find((item) => item.label.toLowerCase() === name.toLowerCase());
+
     setExercises((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
         name,
+        isBodyweightOnly: meta?.isBodyweightOnly ?? false,
+        usesDuration: meta?.usesDuration ?? false,
         sets: [],
         isAddingSet: false,
-        repsInput: "",
+        metricInput: "",
         weightInput: "",
       },
     ]);
@@ -210,6 +218,8 @@ export function NewTrainingDialog({
                             index={index}
                             reps={setItem.reps}
                             weight={setItem.weight}
+                            durationMs={setItem.durationMs}
+                            isBodyweightOnly={exercise.isBodyweightOnly}
                           />
                         ))}
                       </List>
@@ -218,48 +228,63 @@ export function NewTrainingDialog({
                     {exercise.isAddingSet ? (
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                         <TextField
-                          label="Reps"
-                          type="number"
-                          value={exercise.repsInput}
+                          label={exercise.usesDuration ? "Duration" : "Reps"}
+                          placeholder={exercise.usesDuration ? "1h 2m 1s" : undefined}
+                          type={exercise.usesDuration ? "text" : "number"}
+                          value={exercise.metricInput}
                           onChange={(e) => {
                             const value = e.target.value;
                             setExercises((prev) =>
                               prev.map((item) =>
-                                item.id === exercise.id ? { ...item, repsInput: value } : item,
+                                item.id === exercise.id ? { ...item, metricInput: value } : item,
                               ),
                             );
                           }}
-                          inputProps={{ min: 1 }}
+                          inputProps={exercise.usesDuration ? undefined : { min: 1 }}
                           fullWidth
                         />
-                        <TextField
-                          label="Weight (kg)"
-                          type="number"
-                          value={exercise.weightInput}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setExercises((prev) =>
-                              prev.map((item) =>
-                                item.id === exercise.id ? { ...item, weightInput: value } : item,
-                              ),
-                            );
-                          }}
-                          inputProps={{ min: -999999, step: 0.5 }}
-                          fullWidth
-                        />
+                        {exercise.isBodyweightOnly ? null : (
+                          <TextField
+                            label="Weight (kg)"
+                            type="number"
+                            value={exercise.weightInput}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setExercises((prev) =>
+                                prev.map((item) =>
+                                  item.id === exercise.id ? { ...item, weightInput: value } : item,
+                                ),
+                              );
+                            }}
+                            inputProps={{ min: -999999, step: 0.5 }}
+                            fullWidth
+                          />
+                        )}
                         <Button
                           variant="contained"
                           onClick={() => {
-                            const reps = Number(exercise.repsInput);
-                            const weight = Number(exercise.weightInput);
-                            if (!Number.isFinite(reps) || reps <= 0) {
+                            const reps = exercise.usesDuration ? 1 : Number(exercise.metricInput);
+                            const parsedDuration = exercise.usesDuration
+                              ? parseDurationToMs(exercise.metricInput)
+                              : null;
+                            const durationMs = parsedDuration ?? undefined;
+                            const weight = exercise.isBodyweightOnly ? 0 : Number(exercise.weightInput);
+
+                            if (exercise.usesDuration && !parsedDuration) {
+                              setStatus({
+                                type: "error",
+                                message: `Invalid duration for ${exercise.name}. Use format like "1h 2m 1s".`,
+                              });
+                              return;
+                            }
+                            if (!exercise.usesDuration && (!Number.isFinite(reps) || reps <= 0)) {
                               setStatus({
                                 type: "error",
                                 message: `Invalid reps for ${exercise.name}.`,
                               });
                               return;
                             }
-                            if (!Number.isFinite(weight)) {
+                            if (!exercise.isBodyweightOnly && !Number.isFinite(weight)) {
                               setStatus({
                                 type: "error",
                                 message: `Invalid weight for ${exercise.name}.`,
@@ -272,8 +297,8 @@ export function NewTrainingDialog({
                                 item.id === exercise.id
                                   ? {
                                       ...item,
-                                      sets: [...item.sets, { reps, weight }],
-                                      repsInput: "",
+                                      sets: [...item.sets, { reps, weight, durationMs }],
+                                      metricInput: "",
                                       weightInput: "",
                                       isAddingSet: false,
                                     }
@@ -319,6 +344,7 @@ export function NewTrainingDialog({
                 exercise: exercise.name,
                 reps: setItem.reps,
                 weight: setItem.weight,
+                durationMs: setItem.durationMs,
                 date: dateStr,
               })),
             );
