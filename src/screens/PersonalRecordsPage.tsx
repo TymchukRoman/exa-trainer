@@ -1,10 +1,13 @@
-import { Autocomplete, Box, CircularProgress, Container, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Card, CardContent, CircularProgress, Container, Divider, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useMemo, useState } from "react";
 import { ExerciseRecord } from "../api/exercises";
-import { ExerciseRecordsCard } from "../components/records/ExerciseRecordsCard";
+import { MuscleGroupPicker } from "../components/pickers/MuscleGroupPicker";
 import { useAppContext } from "../state/AppContext";
 import { formatDurationMs } from "../utils/duration";
+import { getCatalogMuscleGroupIdsSorted } from "../utils/muscleGroups";
 import { getMaxDurationRecords, getMaxRepsRecords, getMaxWeightRecords } from "../utils/trainingStats";
+import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
+import { getExerciseRegions } from "../utils/trainingRegions";
 
 function exerciseMatchesMuscleGroups(
   exerciseLabel: string,
@@ -17,7 +20,7 @@ function exerciseMatchesMuscleGroups(
 }
 
 export function PersonalRecordsPage() {
-  const { trainingSets, exercises, isLoadingTrainings } = useAppContext();
+  const { trainingSets, exercises, muscleGroups, isLoadingTrainings } = useAppContext();
   const [exerciseFilter, setExerciseFilter] = useState<string | null>(null);
   const [muscleGroupFilter, setMuscleGroupFilter] = useState<string[]>([]);
 
@@ -31,15 +34,10 @@ export function PersonalRecordsPage() {
     [trainingSets],
   );
 
-  const muscleGroupOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const exercise of exercises) {
-      for (const g of exercise.muscleGroup) {
-        set.add(g);
-      }
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [exercises]);
+  const muscleGroupOptions = useMemo(
+    () => getCatalogMuscleGroupIdsSorted(muscleGroups),
+    [muscleGroups],
+  );
 
   const filteredTrainingSets = useMemo(() => {
     let rows = trainingSets;
@@ -51,10 +49,27 @@ export function PersonalRecordsPage() {
     }
     return rows;
   }, [trainingSets, exerciseFilter, muscleGroupFilter, exerciseMap]);
-  const maxDurationRecords = useMemo(
-    () => getMaxDurationRecords(filteredTrainingSets),
-    [filteredTrainingSets],
-  );
+
+  const maxWeightByExercise = useMemo(() => {
+    const records = getMaxWeightRecords(filteredTrainingSets);
+    return new Map(records.map((r) => [r.exercise, r]));
+  }, [filteredTrainingSets]);
+  const maxRepsByExercise = useMemo(() => {
+    const records = getMaxRepsRecords(filteredTrainingSets);
+    return new Map(records.map((r) => [r.exercise, r]));
+  }, [filteredTrainingSets]);
+  const maxDurationByExercise = useMemo(() => {
+    const records = getMaxDurationRecords(filteredTrainingSets);
+    return new Map(records.map((r) => [r.exercise, r]));
+  }, [filteredTrainingSets]);
+
+  const visibleExercises = useMemo(() => {
+    const set = new Set<string>();
+    for (const k of maxWeightByExercise.keys()) set.add(k);
+    for (const k of maxRepsByExercise.keys()) set.add(k);
+    for (const k of maxDurationByExercise.keys()) set.add(k);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [maxWeightByExercise, maxRepsByExercise, maxDurationByExercise]);
 
   if (isLoadingTrainings) {
     return (
@@ -73,7 +88,7 @@ export function PersonalRecordsPage() {
           Personal records
         </Typography>
         <Typography color="text.secondary">
-          Best set per exercise by max weight or max reps. Use filters to narrow exercises.
+          Best set per exercise. Use filters to narrow exercises.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <Autocomplete
@@ -85,67 +100,117 @@ export function PersonalRecordsPage() {
               <TextField {...params} label="Exercise" placeholder="All exercises" />
             )}
           />
-          <Autocomplete
-            sx={{ flex: 1 }}
-            multiple
-            options={muscleGroupOptions}
-            value={muscleGroupFilter}
-            onChange={(_, value) => setMuscleGroupFilter(value)}
-            renderInput={(params) => (
-              <TextField {...params} label="Muscle groups" placeholder="Any" />
-            )}
-          />
+          <Box sx={{ flex: 1 }}>
+            <MuscleGroupPicker
+              catalog={muscleGroups}
+              options={muscleGroupOptions}
+              value={muscleGroupFilter}
+              onChange={setMuscleGroupFilter}
+              label="Muscle groups"
+              placeholder="Any"
+            />
+          </Box>
         </Stack>
-        <ExerciseRecordsCard
-          title="Max weight"
-          subtitle="Heaviest successful set per exercise"
-          trainingSets={filteredTrainingSets}
-          emphasis="weight"
-          getRecords={getMaxWeightRecords}
-        />
-        <ExerciseRecordsCard
-          title="Max reps"
-          subtitle="Most reps in a single set per exercise"
-          trainingSets={filteredTrainingSets}
-          emphasis="reps"
-          getRecords={getMaxRepsRecords}
-        />
-        <Box>
-          <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
-            Max duration
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Longest set duration per exercise.
-          </Typography>
-          {maxDurationRecords.length === 0 ? (
-            <Typography color="text.secondary">No timed sets for current filters.</Typography>
-          ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
-                gap: 1.25,
-              }}
-            >
-              {maxDurationRecords.map((record) => (
-                <Stack key={record.exercise} spacing={0.25}>
-                  <Typography fontWeight={700} variant="body2">
-                    {record.exercise}
-                  </Typography>
-                  <Typography variant="body1" fontWeight={800}>
-                    {formatDurationMs(record.durationMs)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {record.weight} kg
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {record.date}
-                  </Typography>
-                </Stack>
-              ))}
-            </Box>
-          )}
-        </Box>
+
+        {visibleExercises.length === 0 ? (
+          <Typography color="text.secondary">No records for the current filters.</Typography>
+        ) : (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
+              gap: 1.5,
+            }}
+          >
+            {visibleExercises.map((exerciseLabel) => {
+              const meta = exerciseMap.get(exerciseLabel.toLowerCase());
+              const isDuration = meta?.usesDuration ?? false;
+              const isBodyweightOnly = meta?.isBodyweightOnly ?? false;
+              const weightRecord = maxWeightByExercise.get(exerciseLabel);
+              const repsRecord = maxRepsByExercise.get(exerciseLabel);
+              const durationRecord = maxDurationByExercise.get(exerciseLabel);
+
+              return (
+                <Card key={exerciseLabel} variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1.25}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography fontWeight={800} variant="h6">
+                          {exerciseLabel}
+                        </Typography>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          {getExerciseRegions({
+                            exerciseLabel,
+                            exerciseMap,
+                            muscleGroups,
+                          }).map((region) => (
+                            <Tooltip key={`${exerciseLabel}-${region}`} title={region}>
+                              <Box
+                                component="img"
+                                src={getMuscleRegionIconSrc(region)}
+                                alt={region}
+                                sx={{ width: 18, height: 18, opacity: 0.9 }}
+                              />
+                            </Tooltip>
+                          ))}
+                        </Stack>
+                      </Stack>
+                      <Divider />
+
+                      {!isBodyweightOnly && weightRecord ? (
+                        <Stack spacing={0.25}>
+                          <Typography variant="body2" color="text.secondary">
+                            Max weight
+                          </Typography>
+                          <Typography variant="body1" fontWeight={800}>
+                            {weightRecord.weight} kg
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {weightRecord.reps} reps · {weightRecord.date}
+                          </Typography>
+                        </Stack>
+                      ) : null}
+
+                      {!isDuration && repsRecord ? (
+                        <Stack spacing={0.25}>
+                          <Typography variant="body2" color="text.secondary">
+                            Max reps
+                          </Typography>
+                          <Typography variant="body1" fontWeight={800}>
+                            {repsRecord.reps} reps
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {repsRecord.weight} kg · {repsRecord.date}
+                          </Typography>
+                        </Stack>
+                      ) : null}
+
+                      {isDuration && durationRecord ? (
+                        <Stack spacing={0.25}>
+                          <Typography variant="body2" color="text.secondary">
+                            Max time
+                          </Typography>
+                          <Typography variant="body1" fontWeight={800}>
+                            {formatDurationMs(durationRecord.durationMs)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {durationRecord.weight} kg · {durationRecord.date}
+                          </Typography>
+                        </Stack>
+                      ) : null}
+
+                      {!weightRecord && !repsRecord && !durationRecord ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No records yet.
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Box>
+        )}
       </Stack>
     </Container>
   );

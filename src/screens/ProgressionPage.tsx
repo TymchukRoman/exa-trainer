@@ -15,6 +15,8 @@ import { BarChart, LineChart } from "@mui/x-charts";
 import { useAppContext } from "../state/AppContext";
 import dayjs from "dayjs";
 import { formatDurationMs } from "../utils/duration";
+import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
+import { getExerciseRegions } from "../utils/trainingRegions";
 
 type SessionAgg = {
   date: string;
@@ -39,7 +41,7 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 export function ProgressionPage() {
-  const { trainingSets, exercises, isLoadingTrainings } = useAppContext();
+  const { trainingSets, exercises, muscleGroups, isLoadingTrainings } = useAppContext();
 
   const daysByExercise = useMemo(() => {
     const byExercise = new Map<string, Set<string>>();
@@ -56,8 +58,18 @@ export function ProgressionPage() {
   const selectableExercises = useMemo(() => {
     const names = new Set<string>(exercises.map((e) => e.label));
     for (const set of trainingSets) names.add(set.exercise);
-    return [...names].sort((a, b) => a.localeCompare(b));
-  }, [exercises, trainingSets]);
+    return [...names].sort((a, b) => {
+      const ad = daysByExercise.get(a) ?? 0;
+      const bd = daysByExercise.get(b) ?? 0;
+      if (bd !== ad) return bd - ad;
+      return a.localeCompare(b);
+    });
+  }, [exercises, trainingSets, daysByExercise]);
+
+  const exerciseMap = useMemo(
+    () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
+    [exercises],
+  );
 
   const [exercise, setExercise] = useState<string>(selectableExercises[0] ?? "");
   const selectedExerciseMeta = useMemo(
@@ -162,7 +174,24 @@ export function ProgressionPage() {
           renderOption={(props, option) => (
             <li {...props}>
               <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                <Typography>{option}</Typography>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    {getExerciseRegions({
+                      exerciseLabel: option,
+                      exerciseMap,
+                      muscleGroups,
+                    }).map((region) => (
+                      <Box
+                        key={`${option}-${region}`}
+                        component="img"
+                        src={getMuscleRegionIconSrc(region)}
+                        alt={region}
+                        sx={{ width: 18, height: 18, opacity: 0.9 }}
+                      />
+                    ))}
+                  </Stack>
+                  <Typography sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>{option}</Typography>
+                </Stack>
                 {daysByExercise.get(option) ? (
                   <Chip size="small" label={`${daysByExercise.get(option)} days`} />
                 ) : null}

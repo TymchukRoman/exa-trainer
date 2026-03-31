@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExerciseRecord, getExercises } from "../api/exercises";
+import type { ExerciseRecord } from "../api/exercises";
 import { getTrainingSets, TrainingSetRecord } from "../api/trainings";
 import {
   checkMongoConnection,
@@ -16,6 +16,8 @@ import {
   setThemeMode,
   ThemeMode,
 } from "../api/settings";
+import { useAppCatalogQueries } from "../hooks/useAppCatalogQueries";
+import type { MuscleGroupRecord } from "../api/muscleGroups";
 
 export type AppContextValue = {
   data: unknown;
@@ -30,11 +32,14 @@ export type AppContextValue = {
   reloadSettings: () => Promise<void>;
   trainingSets: TrainingSetRecord[];
   exercises: ExerciseRecord[];
+  muscleGroups: MuscleGroupRecord[];
   groupedTrainingSets: GroupedTrainingByDate[];
   isLoadingTrainings: boolean;
   isFetchingTrainings: boolean;
   isLoadingExercises: boolean;
+  isLoadingMuscleGroups: boolean;
   refetchExercises: () => Promise<void>;
+  refetchMuscleGroups: () => Promise<void>;
   refetchTrainingSets: () => Promise<void>;
 };
 
@@ -92,14 +97,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     queryFn: getTrainingSets,
     enabled: isConfigured,
   });
-  const exercisesQuery = useQuery({
-    queryKey: ["exercises"],
-    queryFn: getExercises,
-    enabled: isConfigured,
-  });
+  const { muscleGroupsQuery, exercisesQuery } = useAppCatalogQueries(isConfigured);
 
   const trainingSets = trainingsQuery.data ?? [];
   const exercises = exercisesQuery.data ?? [];
+  const muscleGroups = muscleGroupsQuery.data ?? [];
 
   const groupedTrainingSets = useMemo<GroupedTrainingByDate[]>(() => {
     const dateMap = new Map<
@@ -137,6 +139,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refetchExercises = useCallback(async () => {
     await exercisesQuery.refetch();
   }, [exercisesQuery]);
+  const refetchMuscleGroups = useCallback(async () => {
+    await muscleGroupsQuery.refetch();
+  }, [muscleGroupsQuery]);
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -152,11 +157,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reloadSettings,
       trainingSets,
       exercises,
+      muscleGroups,
       groupedTrainingSets,
       isLoadingTrainings: trainingsQuery.isLoading,
       isFetchingTrainings: trainingsQuery.isFetching,
       isLoadingExercises: exercisesQuery.isLoading,
+      isLoadingMuscleGroups: muscleGroupsQuery.isLoading,
       refetchExercises,
+      refetchMuscleGroups,
       refetchTrainingSets,
     }),
     [
@@ -171,11 +179,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reloadSettings,
       trainingSets,
       exercises,
+      muscleGroups,
       groupedTrainingSets,
       trainingsQuery.isLoading,
       trainingsQuery.isFetching,
       exercisesQuery.isLoading,
+      muscleGroupsQuery.isLoading,
       refetchExercises,
+      refetchMuscleGroups,
       refetchTrainingSets,
     ],
   );
@@ -190,4 +201,3 @@ export function useAppContext(): AppContextValue {
   }
   return value;
 }
-

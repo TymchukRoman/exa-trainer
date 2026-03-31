@@ -13,6 +13,9 @@ import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { ExerciseRecord } from "../../api/exercises";
 import { TrainingSetRecord } from "../../api/trainings";
+import { getMuscleRegionIconSrc } from "../../constants/muscleRegionIcons";
+import { useAppContext } from "../../state/AppContext";
+import { buildMuscleGroupById, getMuscleGroupName } from "../../utils/muscleGroups";
 
 type TimeWindow = "week" | "month";
 
@@ -23,11 +26,13 @@ export function MuscleGroupDistributionCard({
   trainingSets: TrainingSetRecord[];
   exercises: ExerciseRecord[];
 }) {
+  const { muscleGroups } = useAppContext();
   const [window, setWindow] = useState<TimeWindow>("month");
   const exerciseMap = useMemo(
     () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
     [exercises],
   );
+  const muscleById = useMemo(() => buildMuscleGroupById(muscleGroups), [muscleGroups]);
 
   const distribution = useMemo(() => {
     const daysBack = window === "week" ? 7 : 30;
@@ -97,21 +102,33 @@ export function MuscleGroupDistributionCard({
             </Typography>
           ) : (
             <Stack spacing={1.5}>
-              {distribution.rows.map((row) => (
-                <Box key={row.group}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ textTransform: "capitalize" }}>{row.group}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {row.count} sets ({row.percent.toFixed(1)}%)
-                    </Typography>
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(100, row.percent)}
-                    sx={{ mt: 0.75, height: 8, borderRadius: 8 }}
-                  />
-                </Box>
-              ))}
+              {distribution.rows.map((row) => {
+                const region = muscleById.get(row.group)?.region ?? "";
+                const iconSrc = getMuscleRegionIconSrc(region);
+                return (
+                  <Box key={row.group}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          component="img"
+                          src={iconSrc}
+                          alt={region || "region"}
+                          sx={{ width: 18, height: 18, opacity: 0.75 }}
+                        />
+                        <Typography>{getMuscleGroupName(muscleGroups, row.group)}</Typography>
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary">
+                        {row.count} sets ({row.percent.toFixed(1)}%)
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.min(100, row.percent)}
+                      sx={{ mt: 0.75, height: 8, borderRadius: 8 }}
+                    />
+                  </Box>
+                );
+              })}
               <Typography variant="caption" color="text.secondary">
                 Total group hits: {distribution.total}
               </Typography>
@@ -122,4 +139,3 @@ export function MuscleGroupDistributionCard({
     </Card>
   );
 }
-

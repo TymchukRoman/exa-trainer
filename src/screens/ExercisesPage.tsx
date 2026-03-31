@@ -13,18 +13,28 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { createExercise, deleteExercise } from "../api/exercises";
+import { MuscleGroupPicker } from "../components/pickers/MuscleGroupPicker";
+import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
 import { useAppContext } from "../state/AppContext";
 import { toErrorMessage } from "../utils/errors";
+import {
+  getCatalogMuscleGroupIdsSorted,
+  formatMuscleGroupsForDisplay,
+} from "../utils/muscleGroups";
+import { getExerciseRegions } from "../utils/trainingRegions";
+import { Delete as DeleteIcon } from "@mui/icons-material";
 
 export function ExercisesPage() {
-  const { exercises, isLoadingExercises, refetchExercises } = useAppContext();
+  const { exercises, muscleGroups, isLoadingExercises, refetchExercises } = useAppContext();
   const [name, setName] = useState("");
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
@@ -40,15 +50,14 @@ export function ExercisesPage() {
     () => [...exercises].sort((a, b) => a.label.localeCompare(b.label)),
     [exercises],
   );
-  const muscleGroupOptions = useMemo(() => {
-    const groups = new Set<string>();
-    for (const exercise of exercises) {
-      for (const group of exercise.muscleGroup) {
-        groups.add(group);
-      }
-    }
-    return [...groups].sort((a, b) => a.localeCompare(b));
-  }, [exercises]);
+  const exerciseMap = useMemo(
+    () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
+    [exercises],
+  );
+  const muscleGroupOptions = useMemo(
+    () => getCatalogMuscleGroupIdsSorted(muscleGroups),
+    [muscleGroups],
+  );
 
   async function handleCreate() {
     setStatus(null);
@@ -135,20 +144,14 @@ export function ExercisesPage() {
                 )}
                 fullWidth
               />
-              <Autocomplete
-                multiple
+              <MuscleGroupPicker
+                catalog={muscleGroups}
                 options={muscleGroupOptions}
                 value={selectedMuscleGroups}
-                onChange={(_, value) => setSelectedMuscleGroups(value)}
-                disableCloseOnSelect
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Muscle groups"
-                    helperText="Select one or more muscle groups."
-                    fullWidth
-                  />
-                )}
+                onChange={setSelectedMuscleGroups}
+                label="Muscle groups"
+                placeholder="Select..."
+                helperText="Pick canonical muscle ids from the app catalog (loaded from the app bundle)."
               />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <FormControlLabel
@@ -199,9 +202,31 @@ export function ExercisesPage() {
                     }}
                   >
                     <Stack spacing={0.25}>
-                      <Typography fontWeight={700}>{item.label}</Typography>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography fontWeight={700}>{item.label}</Typography>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          {Array.from(
+                            new Set(
+                              getExerciseRegions({
+                                exerciseLabel: item.label,
+                                exerciseMap,
+                                muscleGroups,
+                              }),
+                            ),
+                          ).map((region) => (
+                            <Tooltip key={`${item.id}-${region}`} title={region}>
+                              <Box
+                                component="img"
+                                src={getMuscleRegionIconSrc(region)}
+                                alt={region}
+                                sx={{ width: 18, height: 18, opacity: 0.9 }}
+                              />
+                            </Tooltip>
+                          ))}
+                        </Stack>
+                      </Stack>
                       <Typography variant="caption" color="text.secondary">
-                        {item.muscleGroup.join(", ")}
+                        {formatMuscleGroupsForDisplay(muscleGroups, item.muscleGroup)}
                       </Typography>
                       <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
                         {item.isBodyweightOnly ? (
@@ -218,14 +243,14 @@ export function ExercisesPage() {
                       ) : (
                         <>
                           <Chip label="Custom" size="small" color="primary" />
-                          <Button
+                          <IconButton
                             size="small"
-                            color="error"
+                            aria-label="Delete exercise"
                             onClick={() => void handleDelete(item.id)}
                             disabled={deletingId === item.id}
                           >
-                            Delete
-                          </Button>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
                         </>
                       )}
                     </Stack>

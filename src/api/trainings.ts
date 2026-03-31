@@ -14,6 +14,7 @@ type TrainingSetOutputDto = {
   reps: number;
   weight: number;
   duration_ms?: number;
+  deleted?: boolean;
   date_ms: number;
 };
 
@@ -52,6 +53,10 @@ export async function getTrainingSets(): Promise<TrainingSetRecord[]> {
 
 export async function deleteTrainingSet(id: string): Promise<number> {
   return invoke<number>("delete_training_set", { id });
+}
+
+export async function softDeleteTrainingSets(ids: string[]): Promise<number> {
+  return invoke<number>("soft_delete_training_sets", { ids });
 }
 
 export async function updateTrainingSet(params: {

@@ -1,9 +1,11 @@
 import { Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
 import {
+  Chip,
   IconButton,
   ListItem,
-  ListItemText,
   ListItemSecondaryAction,
+  Stack,
+  Typography,
 } from "@mui/material";
 import { formatDurationMs } from "../utils/duration";
 
@@ -25,12 +27,14 @@ export function TrainingSetItem({
   onDelete?: () => void;
 }) {
   const performanceText = durationMs ? formatDurationMs(durationMs) : `${reps} reps`;
-  const loadText = isBodyweightOnly ? "" : ` @ ${weight} kg`;
+  const loadText = isBodyweightOnly || weight === 0 ? null : `${weight} kg`;
   return (
     <ListItem disableGutters>
-      <ListItemText
-        primary={`Set ${index + 1}: ${performanceText}${loadText}`}
-      />
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ whiteSpace: "nowrap" }}>{`Set ${index + 1}:`}</Typography>
+        <Chip size="small" label={performanceText} />
+        {loadText ? <Chip size="small" label={loadText} variant="outlined" /> : null}
+      </Stack>
       {(onEdit || onDelete) && (
         <ListItemSecondaryAction>
           {onEdit ? (

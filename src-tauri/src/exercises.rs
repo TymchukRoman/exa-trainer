@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{doc, Document};
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,10 @@ use crate::mongo::get_mongo_client;
 struct DefaultExerciseSeed {
     label: String,
     muscle_group: Vec<String>,
+    #[serde(default)]
+    is_bodyweight_only: bool,
+    #[serde(default)]
+    uses_duration: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,6 +28,18 @@ pub struct ExerciseOutput {
     uses_duration: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MuscleGroupOutput {
+    pub id: String,
+    pub name: String,
+    pub region: String,
+    pub alt_names: Vec<String>,
+    pub image_url: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateExerciseInput {
@@ -32,91 +50,96 @@ pub struct CreateExerciseInput {
 }
 
 const DEFAULT_EXERCISES_JSON: &str = include_str!("../../src/data/exercises.json");
+const MUSCLE_GROUPS_JSON: &str = include_str!("../../src/data/muscleGroups.json");
 
-async fn seed_default_exercises_if_empty(
-    collection: &mongodb::Collection<Document>,
-) -> Result<(), String> {
-    let existing = collection
-        .find_one(doc! {})
-        .await
-        .map_err(|e| format!("Failed to check exercises collection: {e}"))?;
-    if existing.is_some() {
-        return Ok(());
-    }
+fn exercise_from_mongo_document(doc: &Document) -> Result<ExerciseOutput, String> {
+    let id = doc
+        .get_object_id("_id")
+        .map_err(|_| "Invalid exercise document: missing _id".to_string())?
+        .to_hex();
+    let label = doc
+        .get_str("label")
+        .map_err(|_| "Invalid exercise document: missing label".to_string())?
+        .to_string();
+    let is_default = doc.get_bool("is_default").unwrap_or(false);
+    let is_bodyweight_only = doc.get_bool("is_bodyweight_only").unwrap_or(false);
+    let uses_duration = doc.get_bool("uses_duration").unwrap_or(false);
+    let muscle_group = doc
+        .get_array("muscle_group")
+        .map_err(|_| "Invalid exercise document: missing muscle_group".to_string())?
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<Vec<String>>();
 
-    let defaults: Vec<DefaultExerciseSeed> = serde_json::from_str(DEFAULT_EXERCISES_JSON)
-        .map_err(|e| format!("Failed to parse default exercises json: {e}"))?;
+    Ok(ExerciseOutput {
+        id,
+        label,
+        muscle_group,
+        is_default,
+        is_bodyweight_only,
+        uses_duration,
+    })
+}
 
-    let docs: Vec<Document> = defaults
-        .into_iter()
-        .map(|item| {
-            doc! {
-                "label": item.label.trim().to_string(),
-                "label_lower": item.label.trim().to_lowercase(),
-                "muscle_group": item.muscle_group,
-                "is_default": true,
-                "is_bodyweight_only": false,
-                "uses_duration": false
-            }
-        })
-        .collect();
-
-    collection
-        .insert_many(docs)
-        .await
-        .map_err(|e| format!("Failed to seed default exercises: {e}"))?;
-    Ok(())
+#[tauri::command]
+pub fn get_muscle_groups() -> Result<Vec<MuscleGroupOutput>, String> {
+    serde_json::from_str(MUSCLE_GROUPS_JSON).map_err(|e| format!("Failed to parse muscle groups json: {e}"))
 }
 
 #[tauri::command]
 pub async fn get_exercises(app: tauri::AppHandle) -> Result<Vec<ExerciseOutput>, String> {
+    let defaults: Vec<DefaultExerciseSeed> = serde_json::from_str(DEFAULT_EXERCISES_JSON)
+        .map_err(|e| format!("Failed to parse default exercises json: {e}"))?;
+
     let client = get_mongo_client(&app).await?;
     let collection = client
         .database("EXA_TRAINER")
         .collection::<Document>("exercices");
 
-    seed_default_exercises_if_empty(&collection).await?;
-
     let mut cursor = collection
         .find(doc! {})
-        .sort(doc! { "label_lower": 1 })
         .await
         .map_err(|e| format!("Failed to fetch exercises: {e}"))?;
 
-    let mut output = Vec::new();
+    let mut by_label: BTreeMap<String, ExerciseOutput> = BTreeMap::new();
+    // JSON defaults have priority over DB exercises.
+    for item in defaults {
+        let label = item.label.trim().to_string();
+        let key = label.to_lowercase();
+        if key.is_empty() {
+            continue;
+        }
+        by_label.insert(
+            key.clone(),
+            ExerciseOutput {
+                id: format!("default:{key}"),
+                label,
+                muscle_group: item.muscle_group,
+                is_default: true,
+                is_bodyweight_only: item.is_bodyweight_only,
+                uses_duration: item.uses_duration,
+            },
+        );
+    }
+
     while cursor
         .advance()
         .await
         .map_err(|e| format!("Failed to iterate exercises: {e}"))?
     {
         let doc = cursor.deserialize_current().map_err(|e| e.to_string())?;
-        let id = doc
-            .get_object_id("_id")
-            .map_err(|_| "Invalid exercise document: missing _id".to_string())?
-            .to_hex();
-        let label = doc
-            .get_str("label")
-            .map_err(|_| "Invalid exercise document: missing label".to_string())?
-            .to_string();
-        let is_default = doc.get_bool("is_default").unwrap_or(false);
-        let is_bodyweight_only = doc.get_bool("is_bodyweight_only").unwrap_or(false);
-        let uses_duration = doc.get_bool("uses_duration").unwrap_or(false);
-        let muscle_group = doc
-            .get_array("muscle_group")
-            .map_err(|_| "Invalid exercise document: missing muscle_group".to_string())?
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect::<Vec<String>>();
+        let ex = exercise_from_mongo_document(&doc)?;
+        let key = ex.label.to_lowercase();
 
-        output.push(ExerciseOutput {
-            id,
-            label,
-            muscle_group,
-            is_default,
-            is_bodyweight_only,
-            uses_duration,
-        });
+        // If a JSON default exists with the same label, keep the default and ignore the DB entry.
+        if by_label.contains_key(&key) {
+            continue;
+        }
+        by_label.insert(key, ex);
     }
+
+    let mut output: Vec<ExerciseOutput> = by_label.into_values().collect();
+    output.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
     Ok(output)
 }
 
@@ -143,7 +166,6 @@ pub async fn create_exercise(
     let collection = client
         .database("EXA_TRAINER")
         .collection::<Document>("exercices");
-    seed_default_exercises_if_empty(&collection).await?;
 
     let existing = collection
         .find_one(doc! { "label_lower": label.to_lowercase() })
@@ -181,7 +203,6 @@ pub async fn delete_exercise(app: tauri::AppHandle, id: String) -> Result<u64, S
     let collection = client
         .database("EXA_TRAINER")
         .collection::<Document>("exercices");
-    seed_default_exercises_if_empty(&collection).await?;
 
     let existing = collection
         .find_one(doc! { "_id": object_id })

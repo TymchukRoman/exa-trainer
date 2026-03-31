@@ -20,6 +20,7 @@ pub struct TrainingSetOutput {
     reps: i32,
     weight: f64,
     duration_ms: Option<i64>,
+    deleted: bool,
     date_ms: i64,
 }
 
@@ -91,7 +92,7 @@ pub async fn get_training_sets(app: tauri::AppHandle) -> Result<Vec<TrainingSetO
         .collection::<Document>("sets");
 
     let mut cursor = collection
-        .find(doc! {})
+        .find(doc! { "deleted": { "$ne": true } })
         .sort(doc! { "date": -1 })
         .await
         .map_err(|e| format!("Failed to fetch sets: {e}"))?;
@@ -122,6 +123,7 @@ pub async fn get_training_sets(app: tauri::AppHandle) -> Result<Vec<TrainingSetO
             .map_err(|_| "Invalid set document: missing date".to_string())?
             .timestamp_millis();
         let duration_ms = doc.get_i64("duration_ms").ok();
+        let deleted = doc.get_bool("deleted").unwrap_or(false);
 
         output.push(TrainingSetOutput {
             id,
@@ -129,6 +131,7 @@ pub async fn get_training_sets(app: tauri::AppHandle) -> Result<Vec<TrainingSetO
             reps,
             weight,
             duration_ms,
+            deleted,
             date_ms,
         });
     }
@@ -145,11 +148,14 @@ pub async fn delete_training_set(app: tauri::AppHandle, id: String) -> Result<u6
         .collection::<Document>("sets");
 
     let result = collection
-        .delete_one(doc! { "_id": object_id })
+        .update_one(
+            doc! { "_id": object_id },
+            doc! { "$set": { "deleted": true } },
+        )
         .await
         .map_err(|e| format!("Failed to delete set: {e}"))?;
 
-    Ok(result.deleted_count)
+    Ok(result.modified_count)
 }
 
 #[tauri::command]
@@ -191,6 +197,36 @@ pub async fn update_training_set(
         .update_one(doc! { "_id": object_id }, update_doc)
         .await
         .map_err(|e| format!("Failed to update set: {e}"))?;
+
+    Ok(result.modified_count)
+}
+
+#[tauri::command]
+pub async fn soft_delete_training_sets(
+    app: tauri::AppHandle,
+    ids: Vec<String>,
+) -> Result<u64, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    let object_ids: Vec<ObjectId> = ids
+        .into_iter()
+        .map(|id| ObjectId::parse_str(&id).map_err(|_| "Invalid set _id".to_string()))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let client = get_mongo_client(&app).await?;
+    let collection = client
+        .database("EXA_TRAINER")
+        .collection::<Document>("sets");
+
+    let result = collection
+        .update_many(
+            doc! { "_id": { "$in": object_ids } },
+            doc! { "$set": { "deleted": true } },
+        )
+        .await
+        .map_err(|e| format!("Failed to delete sets: {e}"))?;
 
     Ok(result.modified_count)
 }

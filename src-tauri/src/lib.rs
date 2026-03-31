@@ -25,7 +25,9 @@ pub fn run() {
             sets::get_training_sets,
             sets::delete_training_set,
             sets::update_training_set,
+            sets::soft_delete_training_sets,
             exercises::get_exercises,
+            exercises::get_muscle_groups,
             exercises::create_exercise,
             exercises::delete_exercise
         ])

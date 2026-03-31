@@ -1,0 +1,314 @@
+[
+  {
+    "id": "neck",
+    "name": "Neck",
+    "region": "neck",
+    "altNames": ["cervical flexors", "neck extensors"],
+    "imageUrl": null,
+    "description": "Muscles stabilizing and moving the cervical spine."
+  },
+  {
+    "id": "traps_upper",
+    "name": "Upper trapezius",
+    "region": "back",
+    "altNames": ["upper traps", "trapezius (upper fibers)"],
+    "imageUrl": null,
+    "description": "Scapular elevation and upper back thickness."
+  },
+  {
+    "id": "traps_mid",
+    "name": "Mid trapezius",
+    "region": "back",
+    "altNames": ["middle traps"],
+    "imageUrl": null,
+    "description": "Scapular retraction."
+  },
+  {
+    "id": "traps_lower",
+    "name": "Lower trapezius",
+    "region": "back",
+    "altNames": ["lower traps"],
+    "imageUrl": null,
+    "description": "Scapular depression and upward rotation."
+  },
+  {
+    "id": "rhomboids",
+    "name": "Rhomboids",
+    "region": "back",
+    "altNames": ["rhomboid major", "rhomboid minor"],
+    "imageUrl": null,
+    "description": "Scapular retraction toward the spine."
+  },
+  {
+    "id": "rear_delts",
+    "name": "Rear deltoids",
+    "region": "shoulders",
+    "altNames": ["posterior deltoids", "rear delts"],
+    "imageUrl": null,
+    "description": "Horizontal abduction and shoulder extension."
+  },
+  {
+    "id": "lateral_delts",
+    "name": "Lateral deltoids",
+    "region": "shoulders",
+    "altNames": ["middle deltoids", "side delts"],
+    "imageUrl": null,
+    "description": "Shoulder abduction."
+  },
+  {
+    "id": "front_delts",
+    "name": "Front deltoids",
+    "region": "shoulders",
+    "altNames": ["anterior deltoids", "front delts"],
+    "imageUrl": null,
+    "description": "Shoulder flexion and pressing."
+  },
+  {
+    "id": "rotator_cuff",
+    "name": "Rotator cuff",
+    "region": "shoulders",
+    "altNames": ["infraspinatus", "teres minor", "subscapularis", "supraspinatus"],
+    "imageUrl": null,
+    "description": "Shoulder stability and external rotation."
+  },
+  {
+    "id": "lats",
+    "name": "Latissimus dorsi",
+    "region": "back",
+    "altNames": ["lats", "latissimus dorsi"],
+    "imageUrl": null,
+    "description": "Shoulder extension, adduction, and vertical pulling."
+  },
+  {
+    "id": "teres_major",
+    "name": "Teres major",
+    "region": "back",
+    "altNames": ["teres major"],
+    "imageUrl": null,
+    "description": "Assists lat pull and shoulder extension."
+  },
+  {
+    "id": "upper_back",
+    "name": "Upper back (general)",
+    "region": "back",
+    "altNames": ["upper back"],
+    "imageUrl": null,
+    "description": "Composite upper-thoracic pulling musculature."
+  },
+  {
+    "id": "mid_back",
+    "name": "Mid back (general)",
+    "region": "back",
+    "altNames": ["mid back", "thoracic region"],
+    "imageUrl": null,
+    "description": "Mid-thoracic thickness and rowing emphasis."
+  },
+  {
+    "id": "pec_major",
+    "name": "Pectoralis major",
+    "region": "chest",
+    "altNames": ["chest", "pecs", "pectoralis major"],
+    "imageUrl": null,
+    "description": "Horizontal pressing and shoulder horizontal adduction."
+  },
+  {
+    "id": "upper_chest",
+    "name": "Upper chest",
+    "region": "chest",
+    "altNames": ["clavicular pec", "upper pecs"],
+    "imageUrl": null,
+    "description": "Clavicular head of pectoralis major."
+  },
+  {
+    "id": "pec_minor",
+    "name": "Pectoralis minor",
+    "region": "chest",
+    "altNames": ["pec minor"],
+    "imageUrl": null,
+    "description": "Scapular protraction and depression."
+  },
+  {
+    "id": "serratus_anterior",
+    "name": "Serratus anterior",
+    "region": "chest",
+    "altNames": ["serratus", "boxer's muscle"],
+    "imageUrl": null,
+    "description": "Scapular protraction and stability."
+  },
+  {
+    "id": "triceps",
+    "name": "Triceps",
+    "region": "arms",
+    "altNames": ["triceps brachii", "triceps"],
+    "imageUrl": null,
+    "description": "Elbow extension."
+  },
+  {
+    "id": "biceps",
+    "name": "Biceps",
+    "region": "arms",
+    "altNames": ["biceps brachii", "biceps"],
+    "imageUrl": null,
+    "description": "Elbow flexion and supination."
+  },
+  {
+    "id": "brachialis",
+    "name": "Brachialis",
+    "region": "arms",
+    "altNames": ["brachialis"],
+    "imageUrl": null,
+    "description": "Primary elbow flexor in neutral grip."
+  },
+  {
+    "id": "forearms",
+    "name": "Forearms (general)",
+    "region": "arms",
+    "altNames": ["forearm", "lower arm"],
+    "imageUrl": null,
+    "description": "Grip and wrist stabilization."
+  },
+  {
+    "id": "forearm_flexors",
+    "name": "Forearm flexors",
+    "region": "arms",
+    "altNames": ["wrist flexors"],
+    "imageUrl": null,
+    "description": "Wrist flexion and grip support."
+  },
+  {
+    "id": "forearm_extensors",
+    "name": "Forearm extensors",
+    "region": "arms",
+    "altNames": ["wrist extensors"],
+    "imageUrl": null,
+    "description": "Wrist extension."
+  },
+  {
+    "id": "grip",
+    "name": "Grip / hands",
+    "region": "arms",
+    "altNames": ["hand strength", "crush grip"],
+    "imageUrl": null,
+    "description": "Finger flexors and grip endurance."
+  },
+  {
+    "id": "erector_spinae",
+    "name": "Erector spinae",
+    "region": "back",
+    "altNames": ["spinal erectors", "paraspinals"],
+    "imageUrl": null,
+    "description": "Spinal extension and hip hinge stability."
+  },
+  {
+    "id": "lower_back",
+    "name": "Lower back (general)",
+    "region": "back",
+    "altNames": ["lumbar region", "lower back"],
+    "imageUrl": null,
+    "description": "Lumbar stability during compound lifts."
+  },
+  {
+    "id": "rectus_abdominis",
+    "name": "Rectus abdominis",
+    "region": "core",
+    "altNames": ["abs", "six-pack"],
+    "imageUrl": null,
+    "description": "Spinal flexion and anterior core."
+  },
+  {
+    "id": "obliques",
+    "name": "Obliques",
+    "region": "core",
+    "altNames": ["internal obliques", "external obliques"],
+    "imageUrl": null,
+    "description": "Trunk rotation and lateral flexion."
+  },
+  {
+    "id": "transverse_abdominis",
+    "name": "Transverse abdominis",
+    "region": "core",
+    "altNames": ["TVA", "deep core"],
+    "imageUrl": null,
+    "description": "Abdominal bracing and intra-abdominal pressure."
+  },
+  {
+    "id": "core",
+    "name": "Core (general)",
+    "region": "core",
+    "altNames": ["midsection", "trunk"],
+    "imageUrl": null,
+    "description": "Composite trunk stability and anti-movement."
+  },
+  {
+    "id": "hip_flexors",
+    "name": "Hip flexors",
+    "region": "hips",
+    "altNames": ["iliopsoas", "hip flexors"],
+    "imageUrl": null,
+    "description": "Hip flexion and leg raise mechanics."
+  },
+  {
+    "id": "glutes",
+    "name": "Glutes",
+    "region": "hips",
+    "altNames": ["gluteus maximus", "gluteus medius", "glutes"],
+    "imageUrl": null,
+    "description": "Hip extension, abduction, and external rotation."
+  },
+  {
+    "id": "quadriceps",
+    "name": "Quadriceps",
+    "region": "legs",
+    "altNames": ["quads", "vastus group", "rectus femoris"],
+    "imageUrl": null,
+    "description": "Knee extension."
+  },
+  {
+    "id": "hamstrings",
+    "name": "Hamstrings",
+    "region": "legs",
+    "altNames": ["biceps femoris", "semitendinosus", "semimembranosus"],
+    "imageUrl": null,
+    "description": "Knee flexion and hip extension."
+  },
+  {
+    "id": "adductors",
+    "name": "Adductors",
+    "region": "legs",
+    "altNames": ["inner thigh", "hip adductors"],
+    "imageUrl": null,
+    "description": "Hip adduction."
+  },
+  {
+    "id": "abductors",
+    "name": "Abductors",
+    "region": "legs",
+    "altNames": ["hip abductors", "glute med (abduction)"],
+    "imageUrl": null,
+    "description": "Hip abduction and lateral stability."
+  },
+  {
+    "id": "calves",
+    "name": "Calves (gastrocnemius)",
+    "region": "legs",
+    "altNames": ["gastrocnemius", "calves"],
+    "imageUrl": null,
+    "description": "Plantarflexion with knee extended."
+  },
+  {
+    "id": "soleus",
+    "name": "Soleus",
+    "region": "legs",
+    "altNames": ["soleus"],
+    "imageUrl": null,
+    "description": "Deep calf; plantarflexion with knee bent."
+  },
+  {
+    "id": "tibialis_anterior",
+    "name": "Tibialis anterior",
+    "region": "legs",
+    "altNames": ["tibialis", "shin muscles"],
+    "imageUrl": null,
+    "description": "Ankle dorsiflexion."
+  }
+]

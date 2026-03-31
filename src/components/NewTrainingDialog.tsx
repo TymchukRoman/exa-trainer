@@ -21,6 +21,7 @@ import { saveTrainingSets } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
 import { parseDurationToMs } from "../utils/duration";
 import { toErrorMessage } from "../utils/errors";
+import { formatMuscleGroupsForDisplay } from "../utils/muscleGroups";
 import { TrainingSetItem } from "./TrainingSetItem";
 
 type ExerciseSet = {
@@ -47,7 +48,7 @@ export function NewTrainingDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const { refetchTrainingSets, exercises: exerciseOptions } = useAppContext();
+  const { refetchTrainingSets, exercises: exerciseOptions, muscleGroups } = useAppContext();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [dateStr, setDateStr] = useState(today);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -161,10 +162,12 @@ export function NewTrainingDialog({
                 renderOption={(props, option) => (
                   <li {...props}>
                     <Stack>
-                      <Typography>{option.label}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {option.muscleGroup.join(", ")}
-                      </Typography>
+                      <Typography>{typeof option === "string" ? option : option.label}</Typography>
+                      {typeof option !== "string" ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {formatMuscleGroupsForDisplay(muscleGroups, option.muscleGroup)}
+                        </Typography>
+                      ) : null}
                     </Stack>
                   </li>
                 )}
