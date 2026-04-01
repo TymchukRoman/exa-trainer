@@ -17,13 +17,11 @@ import {
   Stack,
   Switch,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { createExercise, deleteExercise } from "../api/exercises";
 import { MuscleGroupPicker } from "../components/pickers/MuscleGroupPicker";
-import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
 import { useAppContext } from "../state/AppContext";
 import { toErrorMessage } from "../utils/errors";
 import {
@@ -32,6 +30,7 @@ import {
 } from "../utils/muscleGroups";
 import { getExerciseRegions } from "../utils/trainingRegions";
 import { Delete as DeleteIcon } from "@mui/icons-material";
+import { Exercise } from "../components/Exercise";
 
 export function ExercisesPage() {
   const { exercises, muscleGroups, isLoadingExercises, refetchExercises } = useAppContext();
@@ -115,11 +114,8 @@ export function ExercisesPage() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack spacing={2}>
-        <Typography variant="h5" fontWeight={700}>
-          Exercises
-        </Typography>
         <Typography color="text.secondary">
           Manage custom exercises used by training forms and dashboards.
         </Typography>
@@ -202,32 +198,21 @@ export function ExercisesPage() {
                     }}
                   >
                     <Stack spacing={0.25}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Typography fontWeight={700}>{item.label}</Typography>
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          {Array.from(
-                            new Set(
-                              getExerciseRegions({
-                                exerciseLabel: item.label,
-                                exerciseMap,
-                                muscleGroups,
-                              }),
-                            ),
-                          ).map((region) => (
-                            <Tooltip key={`${item.id}-${region}`} title={region}>
-                              <Box
-                                component="img"
-                                src={getMuscleRegionIconSrc(region)}
-                                alt={region}
-                                sx={{ width: 18, height: 18, opacity: 0.9 }}
-                              />
-                            </Tooltip>
-                          ))}
-                        </Stack>
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatMuscleGroupsForDisplay(muscleGroups, item.muscleGroup)}
-                      </Typography>
+                      <Exercise
+                        label={item.label}
+                        to={`/exercise/${item.id}`}
+                        regions={Array.from(
+                          new Set(
+                            getExerciseRegions({
+                              exerciseLabel: item.label,
+                              exerciseMap,
+                              muscleGroups,
+                            }),
+                          ),
+                        )}
+                        detailed
+                        description={formatMuscleGroupsForDisplay(muscleGroups, item.muscleGroup)}
+                      />
                       <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
                         {item.isBodyweightOnly ? (
                           <Chip label="Bodyweight" size="small" variant="outlined" />

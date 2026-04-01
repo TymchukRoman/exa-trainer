@@ -1,5 +1,5 @@
 import { Box, CircularProgress, Container, Stack, Typography } from "@mui/material";
-import { MuscleGroupDistributionCard } from "../components/dashboard/MuscleGroupDistributionCard";
+import { MuscleRegionDistributionCard } from "../components/dashboard/MuscleRegionDistributionCard";
 import { TrainingDaysCard } from "../components/dashboard/TrainingDaysCard";
 import { TopExercisesCard } from "../components/dashboard/TopExercisesCard";
 import { useAppContext } from "../state/AppContext";
@@ -20,14 +20,7 @@ export function HomePage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
-        <Stack spacing={0.5}>
-          <Typography variant="h4" fontWeight={800}>
-            Exa Trainer
-          </Typography>
-          <Typography color="text.secondary">
-            Dashboard overview of your training results.
-          </Typography>
-        </Stack>
+        <Typography color="text.secondary">Dashboard overview of your training results.</Typography>
 
         <Box
           sx={{
@@ -40,7 +33,7 @@ export function HomePage() {
           <TopExercisesCard trainingSets={trainingSets} />
         </Box>
 
-        <MuscleGroupDistributionCard trainingSets={trainingSets} exercises={exercises} />
+        <MuscleRegionDistributionCard trainingSets={trainingSets} exercises={exercises} />
       </Stack>
     </Container>
   );

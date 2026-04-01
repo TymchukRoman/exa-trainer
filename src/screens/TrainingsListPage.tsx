@@ -1,6 +1,5 @@
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Card,
@@ -26,7 +25,8 @@ import { useMemo, useState } from "react";
 import { TrainingSetItem } from "../components/TrainingSetItem";
 import { softDeleteTrainingSets, updateTrainingSet } from "../api/trainings";
 import { useAppContext } from "../state/AppContext";
-import { MuscleGroupPicker } from "../components/pickers/MuscleGroupPicker";
+import { MuscleRegionPicker } from "../components/pickers/MuscleRegionPicker";
+import { Exercise } from "../components/Exercise";
 import { formatDurationMs, parseDurationToMs } from "../utils/duration";
 import { formatMuscleGroupsForDisplay } from "../utils/muscleGroups";
 import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
@@ -45,23 +45,41 @@ export function TrainingsListPage() {
   const [fromDate, setFromDate] = useState<Dayjs | null>(null);
   const [toDate, setToDate] = useState<Dayjs | null>(null);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
-  const [muscleGroupFilter, setMuscleGroupFilter] = useState<string[]>([]);
 
   const regionOptions = useMemo(() => {
     const set = new Set<string>();
     for (const m of muscleGroups) set.add(m.region);
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [muscleGroups]);
-  const muscleGroupOptions = useMemo(() => {
-    return [...muscleGroups]
-      .map((m) => m.id)
-      .sort((a, b) => a.localeCompare(b));
-  }, [muscleGroups]);
 
   const exerciseMap = useMemo(
     () => new Map(exercises.map((item) => [item.label.toLowerCase(), item])),
     [exercises],
   );
+
+  const regionsByExerciseLabel = useMemo(() => {
+    const labels = new Set<string>();
+    for (const dateGroup of groupedTrainingSets) {
+      for (const ex of dateGroup.exercises) {
+        labels.add(ex.exercise.toLowerCase());
+      }
+    }
+
+    const map = new Map<string, string[]>();
+    for (const label of labels) {
+      map.set(
+        label,
+        getExerciseRegions({
+          exerciseLabel: label,
+          exerciseMap,
+          muscleGroups,
+        }),
+      );
+    }
+    return map;
+  }, [groupedTrainingSets, exerciseMap, muscleGroups]);
+
+  const regionFilterSet = useMemo(() => new Set(regionFilter), [regionFilter]);
 
   const filteredGroups = useMemo(() => {
     const dateFiltered = groupedTrainingSets.filter((dateGroup) => {
@@ -71,29 +89,17 @@ export function TrainingsListPage() {
       return true;
     });
 
-    if (regionFilter.length === 0 && muscleGroupFilter.length === 0) {
+    if (regionFilter.length === 0) {
       return dateFiltered;
     }
 
     return dateFiltered
       .map((dateGroup) => {
         const exercises = dateGroup.exercises.filter((exerciseGroup) => {
-          const meta = exerciseMap.get(exerciseGroup.exercise.toLowerCase());
-          const exerciseMuscles = meta?.muscleGroup ?? ["other"];
+          const regions = regionsByExerciseLabel.get(exerciseGroup.exercise.toLowerCase()) ?? [];
+          const matchesRegion = regionFilterSet.size === 0 || regions.some((r) => regionFilterSet.has(r));
 
-          const matchesMuscle =
-            muscleGroupFilter.length === 0 ||
-            exerciseMuscles.some((id) => muscleGroupFilter.includes(id));
-
-          const regions = getExerciseRegions({
-            exerciseLabel: exerciseGroup.exercise,
-            exerciseMap,
-            muscleGroups,
-          });
-          const matchesRegion =
-            regionFilter.length === 0 || regions.some((r) => regionFilter.includes(r));
-
-          return matchesMuscle && matchesRegion;
+          return matchesRegion;
         });
         return { ...dateGroup, exercises };
       })
@@ -103,9 +109,8 @@ export function TrainingsListPage() {
     fromDate,
     toDate,
     regionFilter,
-    muscleGroupFilter,
-    exerciseMap,
-    muscleGroups,
+    regionsByExerciseLabel,
+    regionFilterSet,
   ]);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -193,19 +198,15 @@ export function TrainingsListPage() {
 
   if (isLoadingTrainings) {
     return (
-      <Container maxWidth="md" sx={{ py: 3, display: "grid", placeItems: "center" }}>
+      <Container maxWidth="lg" sx={{ py: 3, display: "grid", placeItems: "center" }}>
         <CircularProgress />
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack spacing={2}>
-        <Typography variant="h5" fontWeight={700}>
-          Trainings
-        </Typography>
-
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={2}
@@ -229,7 +230,6 @@ export function TrainingsListPage() {
               setFromDate(null);
               setToDate(null);
               setRegionFilter([]);
-              setMuscleGroupFilter([]);
             }}
           >
             Clear
@@ -237,36 +237,12 @@ export function TrainingsListPage() {
         </Stack>
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <Autocomplete
-            sx={{ flex: 1 }}
-            multiple
-            options={regionOptions}
-            value={regionFilter}
-            onChange={(_, value) => setRegionFilter(value)}
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Box
-                    component="img"
-                    src={getMuscleRegionIconSrc(option)}
-                    alt={option}
-                    sx={{ width: 18, height: 18, opacity: 0.9 }}
-                  />
-                  <Typography>{option}</Typography>
-                </Stack>
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField {...params} label="Filter by region" placeholder="Any" />
-            )}
-          />
           <Box sx={{ flex: 1 }}>
-            <MuscleGroupPicker
-              catalog={muscleGroups}
-              options={muscleGroupOptions}
-              value={muscleGroupFilter}
-              onChange={setMuscleGroupFilter}
-              label="Filter by muscle group"
+            <MuscleRegionPicker
+              value={regionFilter}
+              options={regionOptions}
+              onChange={setRegionFilter}
+              label="Filter by muscle region"
               placeholder="Any"
             />
           </Box>
@@ -285,8 +261,24 @@ export function TrainingsListPage() {
             <Card key={dateGroup.date} variant="outlined">
               <CardContent>
                 <Stack spacing={1.5}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
-                    <Typography variant="h6">{dateGroup.date}</Typography>
+                  <Stack spacing={0.75}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+                      <Typography variant="h6">
+                        {dayjs(dateGroup.date, "YYYY-MM-DD").format("ddd")} · {dateGroup.date}
+                      </Typography>
+                      <IconButton
+                        aria-label="Delete day"
+                        onClick={() =>
+                          openDelete({
+                            ids: dateGroup.exercises.flatMap((ex) => ex.sets.map((s) => s.id)),
+                            label: `Delete all sets on ${dateGroup.date}?`,
+                          })
+                        }
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+
                     <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexWrap: "wrap" }}>
                       {dateGroup.exercises.map((exerciseGroup, idx) => {
                         const regions = getExerciseRegions({
@@ -317,48 +309,27 @@ export function TrainingsListPage() {
                       })}
                     </Stack>
                   </Stack>
-                  <Box>
-                    <IconButton
-                      aria-label="Delete day"
-                      onClick={() =>
-                        openDelete({
-                          ids: dateGroup.exercises.flatMap((ex) => ex.sets.map((s) => s.id)),
-                          label: `Delete all sets on ${dateGroup.date}?`,
-                        })
-                      }
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
                   <Divider />
                   {dateGroup.exercises.map((exerciseGroup) => (
                     <Box key={`${dateGroup.date}-${exerciseGroup.exercise}`}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
-                            {exerciseGroup.exercise}
-                          </Typography>
-                          <Stack direction="row" spacing={0.5} alignItems="center">
-                            {Array.from(
-                              new Set(
-                                getExerciseRegions({
-                                  exerciseLabel: exerciseGroup.exercise,
-                                  exerciseMap,
-                                  muscleGroups,
-                                }),
-                              ),
-                            ).map((region) => (
-                              <Tooltip key={`${dateGroup.date}-${exerciseGroup.exercise}-${region}`} title={region}>
-                                <Box
-                                  component="img"
-                                  src={getMuscleRegionIconSrc(region)}
-                                  alt={region}
-                                  sx={{ width: 18, height: 18, opacity: 0.9 }}
-                                />
-                              </Tooltip>
-                            ))}
-                          </Stack>
-                        </Stack>
+                        <Exercise
+                          label={exerciseGroup.exercise}
+                          to={
+                            exerciseMap.get(exerciseGroup.exercise.toLowerCase())?.id
+                              ? `/exercise/${exerciseMap.get(exerciseGroup.exercise.toLowerCase())?.id}`
+                              : undefined
+                          }
+                          regions={Array.from(
+                            new Set(
+                              getExerciseRegions({
+                                exerciseLabel: exerciseGroup.exercise,
+                                exerciseMap,
+                                muscleGroups,
+                              }),
+                            ),
+                          )}
+                        />
                         <IconButton
                           aria-label="Delete exercise"
                           onClick={() =>

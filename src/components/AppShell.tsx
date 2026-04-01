@@ -36,8 +36,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const title =
     location.pathname === "/trainings"
       ? "Trainings"
-      : location.pathname === "/progression"
-        ? "Progression"
+      : location.pathname === "/exercise" || location.pathname.startsWith("/exercise/")
+        ? "Exercise"
       : location.pathname === "/exercises"
         ? "Exercises"
       : location.pathname === "/records"
@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navItems = useMemo(() => [
     { to: "/", label: "Home", icon: <DashboardIcon />, disabled: !isConfigured },
     { to: "/trainings", label: "Trainings", icon: <FitnessCenterIcon />, disabled: !isConfigured },
-    { to: "/progression", label: "Progression", icon: <ShowChartIcon />, disabled: !isConfigured },
+    { to: "/exercise", label: "Exercise", icon: <ShowChartIcon />, disabled: !isConfigured },
     { to: "/exercises", label: "Exercises", icon: <ListAltIcon />, disabled: !isConfigured },
     { to: "/records", label: "Personal records", icon: <EmojiEventsIcon />, disabled: !isConfigured },
     { to: "/settings", label: "Settings", icon: <SettingsIcon />, disabled: false },

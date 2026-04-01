@@ -1,4 +1,4 @@
-import { Autocomplete, Box, Card, CardContent, CircularProgress, Container, Divider, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Autocomplete, Box, Card, CardContent, CircularProgress, Container, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useMemo, useState } from "react";
 import { ExerciseRecord } from "../api/exercises";
 import { MuscleGroupPicker } from "../components/pickers/MuscleGroupPicker";
@@ -6,8 +6,8 @@ import { useAppContext } from "../state/AppContext";
 import { formatDurationMs } from "../utils/duration";
 import { getCatalogMuscleGroupIdsSorted } from "../utils/muscleGroups";
 import { getMaxDurationRecords, getMaxRepsRecords, getMaxWeightRecords } from "../utils/trainingStats";
-import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
 import { getExerciseRegions } from "../utils/trainingRegions";
+import { Exercise } from "../components/Exercise";
 
 function exerciseMatchesMuscleGroups(
   exerciseLabel: string,
@@ -84,9 +84,6 @@ export function PersonalRecordsPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={2}>
-        <Typography variant="h4" fontWeight={800}>
-          Personal records
-        </Typography>
         <Typography color="text.secondary">
           Best set per exercise. Use filters to narrow exercises.
         </Typography>
@@ -134,27 +131,23 @@ export function PersonalRecordsPage() {
                 <Card key={exerciseLabel} variant="outlined">
                   <CardContent>
                     <Stack spacing={1.25}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Typography fontWeight={800} variant="h6">
-                          {exerciseLabel}
-                        </Typography>
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          {getExerciseRegions({
-                            exerciseLabel,
-                            exerciseMap,
-                            muscleGroups,
-                          }).map((region) => (
-                            <Tooltip key={`${exerciseLabel}-${region}`} title={region}>
-                              <Box
-                                component="img"
-                                src={getMuscleRegionIconSrc(region)}
-                                alt={region}
-                                sx={{ width: 18, height: 18, opacity: 0.9 }}
-                              />
-                            </Tooltip>
-                          ))}
-                        </Stack>
-                      </Stack>
+                      <Exercise
+                        label={exerciseLabel}
+                        to={
+                          exerciseMap.get(exerciseLabel.toLowerCase())?.id
+                            ? `/exercise/${exerciseMap.get(exerciseLabel.toLowerCase())?.id}`
+                            : undefined
+                        }
+                        regions={Array.from(
+                          new Set(
+                            getExerciseRegions({
+                              exerciseLabel,
+                              exerciseMap,
+                              muscleGroups,
+                            }),
+                          ),
+                        )}
+                      />
                       <Divider />
 
                       {!isBodyweightOnly && weightRecord ? (

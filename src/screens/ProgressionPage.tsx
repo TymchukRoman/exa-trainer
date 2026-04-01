@@ -158,9 +158,6 @@ export function ProgressionPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={2}>
-        <Typography variant="h4" fontWeight={800}>
-          Progression
-        </Typography>
         <Typography color="text.secondary">
           Exercise-level progression by sets, reps/time, weights and frequency.
         </Typography>

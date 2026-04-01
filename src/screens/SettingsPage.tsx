@@ -1,6 +1,5 @@
 import {
   Alert,
-  Box,
   Button,
   Container,
   MenuItem,
@@ -41,16 +40,9 @@ export function SettingsPage() {
   const canSave = useMemo(() => draftMongoUrl.trim().length > 0, [draftMongoUrl]);
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Settings
-          </Typography>
-          <Typography color="text.secondary">
-            Configure app startup settings.
-          </Typography>
-        </Box>
+        <Typography color="text.secondary">Configure app startup settings.</Typography>
 
         {status ? <Alert severity={status.type}>{status.message}</Alert> : null}
 
