@@ -1,4 +1,3 @@
-import { AppShell } from "./components/AppShell";
 import { AppRouter } from "./router/AppRouter";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { useMemo } from "react";
@@ -15,9 +14,7 @@ export default function App() {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <AppShell>
-          <AppRouter />
-        </AppShell>
+        <AppRouter />
       </ThemeProvider>
     </LocalizationProvider>
   );

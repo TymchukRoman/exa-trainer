@@ -3,6 +3,7 @@ import {
   Dashboard as DashboardIcon,
   EmojiEvents as EmojiEventsIcon,
   FitnessCenter as FitnessCenterIcon,
+  PlayArrow as PlayArrowIcon,
   ListAlt as ListAltIcon,
   ShowChart as ShowChartIcon,
   Settings as SettingsIcon,
@@ -21,12 +22,17 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { ReactNode, useMemo, useState } from "react";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../state/AppContext";
 import { NewTrainingDialog } from "./NewTrainingDialog";
 
-export function AppShell({ children }: { children: ReactNode }) {
+function isNavItemActive(pathname: string, to: string): boolean {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+export function AppShell() {
   const location = useLocation();
   const { isConfigured } = useAppContext();
   const [isNewTrainingOpen, setIsNewTrainingOpen] = useState(false);
@@ -34,7 +40,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const drawerWidth = 240;
 
   const title =
-    location.pathname === "/trainings"
+    location.pathname === "/training"
+      ? "Training"
+      : location.pathname === "/trainings"
       ? "Trainings"
       : location.pathname === "/exercise" || location.pathname.startsWith("/exercise/")
         ? "Exercise"
@@ -48,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navItems = useMemo(() => [
     { to: "/", label: "Home", icon: <DashboardIcon />, disabled: !isConfigured },
+    { to: "/training", label: "Training", icon: <PlayArrowIcon />, disabled: !isConfigured },
     { to: "/trainings", label: "Trainings", icon: <FitnessCenterIcon />, disabled: !isConfigured },
     { to: "/exercise", label: "Exercise", icon: <ShowChartIcon />, disabled: !isConfigured },
     { to: "/exercises", label: "Exercises", icon: <ListAltIcon />, disabled: !isConfigured },
@@ -66,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             key={item.to}
             component={RouterLink}
             to={item.to}
-            selected={location.pathname === item.to}
+            selected={isNavItemActive(location.pathname, item.to)}
             disabled={item.disabled}
             onClick={() => setIsMobileMenuOpen(false)}
           >
@@ -137,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Box>
 
       <Box component="main" sx={{ flexGrow: 1, mt: 8 }}>
-        {children}
+        <Outlet />
       </Box>
 
       {isConfigured && location.pathname !== "/settings" ? (
