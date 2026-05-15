@@ -18,7 +18,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { Delete as DeleteIcon } from "@mui/icons-material";
+import { Delete as DeleteIcon, FileDownload as FileDownloadIcon } from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
 import { useMemo, useState } from "react";
@@ -31,6 +31,8 @@ import { formatDurationMs, parseDurationToMs } from "../utils/duration";
 import { formatMuscleGroupsForDisplay } from "../utils/muscleGroups";
 import { getMuscleRegionIconSrc } from "../constants/muscleRegionIcons";
 import { getExerciseRegions } from "../utils/trainingRegions";
+import { buildTrainingExportRows } from "../utils/trainingExport";
+import { useDataExport } from "../hooks/useDataExport";
 
 export function TrainingsListPage() {
   const {
@@ -112,6 +114,16 @@ export function TrainingsListPage() {
     regionsByExerciseLabel,
     regionFilterSet,
   ]);
+
+  const exportRows = useMemo(() => buildTrainingExportRows(filteredGroups), [filteredGroups]);
+  const {
+    startExport,
+    exportSuccess,
+    exportError,
+    isExporting,
+    openExportedFile,
+    dismissExportFeedback,
+  } = useDataExport(exportRows);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSetId, setEditSetId] = useState<string | null>(null);
@@ -234,7 +246,42 @@ export function TrainingsListPage() {
           >
             Clear
           </Button>
+          <Box sx={{ ml: { sm: "auto" } }}>
+            <Tooltip title="Export to Excel">
+              <span>
+                <IconButton
+                  aria-label="Export to Excel"
+                  onClick={() => void startExport()}
+                  disabled={exportRows.length === 0 || isExporting}
+                  size="small"
+                >
+                  {isExporting ? <CircularProgress size={18} /> : <FileDownloadIcon fontSize="small" />}
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
         </Stack>
+
+        {exportSuccess ? (
+          <Alert
+            severity="success"
+            onClose={dismissExportFeedback}
+            action={
+              exportSuccess.canOpen ? (
+                <Button color="inherit" size="small" onClick={() => void openExportedFile()}>
+                  Open file
+                </Button>
+              ) : undefined
+            }
+          >
+            Export saved as {exportSuccess.filename}
+          </Alert>
+        ) : null}
+        {exportError ? (
+          <Alert severity="error" onClose={dismissExportFeedback}>
+            {exportError}
+          </Alert>
+        ) : null}
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <Box sx={{ flex: 1 }}>
